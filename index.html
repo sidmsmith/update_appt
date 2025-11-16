@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Update Appointment Date v3.1.0</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --bg-dark: #121212;
+      --card-bg: #1e1e1e;
+      --input-bg: #2d2d2d;
+      --border: #333;
+      --text: #e0e0e0;
+      --red-bg: #4a1a1a;
+      --red-text: #ff6b6b;
+      --blue-select: #339af0;
+      --success: #28a745;
+      --primary: #0d6efd;
+    }
+
+    body { 
+      background: var(--bg-dark); 
+      color: var(--text); 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      min-height: 100vh;
+      margin: 0;
+    }
+
+    .main-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      padding: 1.5rem;
+      margin: 1rem;
+      display: flex;
+      flex-direction: column;
+    }
+
+    @media (min-width: 769px) {
+      .main-card { max-width: 900px; margin: 2rem auto; }
+    }
+
+    .form-control, .form-select {
+      background: var(--input-bg);
+      border: 1px solid #444;
+      color: #fff;
+      border-radius: 8px;
+    }
+    .form-control:focus, .form-select:focus {
+      background: #333;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+      color: #fff;
+    }
+
+    .btn-primary { background: var(--primary); border: none; }
+    .btn-success { background: var(--success); border: none; }
+    .btn-secondary { background: #6c757d; border: none; }
+    .btn-primary:hover { background: #0b5ed7; }
+    .btn-success:hover { background: #218838; }
+    .btn-secondary:hover { background: #5a6268; }
+
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 1rem 0 0.5rem 0;
+      min-height: 2rem;
+    }
+    .status { 
+      font-weight: 600; 
+      padding: 0.25rem 0;
+      flex: 1;
+    }
+
+    .form-label { color: #bbbbbb; font-weight: 600; }
+    small { color: #999; }
+    h2 { color: var(--primary); }
+
+    /* HIDDEN UNTIL AUTH */
+    #mainUI { display: none; }
+
+    /* SELECTION FRAME */
+    .selection-frame {
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      margin: 0.5rem 0;
+    }
+
+    .selection-frame label {
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      display: block;
+    }
+
+    .checkbox-group {
+      margin-bottom: 0.5rem;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+      margin-right: 0.5rem;
+    }
+
+    #additionalEntry {
+      margin-top: 0.5rem;
+      display: none;
+    }
+
+    /* PROGRESS BAR */
+    .progress-container {
+      margin: 1rem 0;
+    }
+
+    .progress {
+      height: 25px;
+      background: var(--input-bg);
+      border-radius: 8px;
+    }
+
+    .progress-bar {
+      background: var(--primary);
+    }
+
+    /* RESULTS TEXTAREA */
+    #resultsText {
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85em;
+      resize: vertical;
+      min-height: 150px;
+      max-height: 300px;
+    }
+
+    #resultsText:focus {
+      background: #333;
+      border-color: var(--primary);
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <div class="main-card">
+    <h2 class="text-center mb-4">Update Appointment Date v3.1.0</h2>
+
+    <!-- ORG -->
+    <div class="mb-3">
+      <label class="form-label">ORG:</label>
+      <div class="d-flex align-items-center gap-2">
+        <input type="text" id="org" class="form-control" placeholder="Enter ORG" maxlength="20" style="width: 250px; max-width: 100%;" />
+        <button id="authBtn" class="btn btn-success px-4">Authenticate</button>
+      </div>
+      <small>Press Enter to authenticate</small>
+    </div>
+
+    <!-- STATUS -->
+    <div class="status-bar">
+      <div class="status" id="status">Enter ORG and press Enter to authenticate</div>
+    </div>
+
+    <!-- MAIN UI (Hidden until auth) -->
+    <div id="mainUI">
+      <!-- DATE PICKER -->
+      <div class="mb-3">
+        <label class="form-label">New Date:</label>
+        <input type="date" id="datePicker" class="form-control" style="width: 200px;" />
+      </div>
+
+      <!-- APPOINTMENT SELECTION -->
+      <div class="selection-frame">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <label style="margin-bottom: 0;">Appointment Selection</label>
+          <button type="button" id="clearPrefsBtn" class="btn btn-sm btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" title="Clear saved preferences">Clear Saved</button>
+        </div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="useDefault" checked />
+          <label for="useDefault" style="display: inline; font-weight: normal;">Use Default Appointments</label>
+        </div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="useCsv" />
+          <label for="useCsv" style="display: inline; font-weight: normal;">Appointment CSV File</label>
+        </div>
+        <div id="csvFileContainer" style="display: none; margin-top: 0.5rem;">
+          <div class="d-flex gap-2 align-items-center">
+            <input type="text" id="csvFileName" class="form-control" placeholder="No file selected" readonly style="flex: 1;" />
+            <input type="file" id="csvFileInput" accept=".csv,.xls,.xlsx" style="display: none;" />
+            <button type="button" id="csvBrowseBtn" class="btn btn-secondary">Browse</button>
+          </div>
+        </div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="useAdditional" />
+          <label for="useAdditional" style="display: inline; font-weight: normal;">Additional Appointments</label>
+        </div>
+        <input type="text" id="additionalEntry" class="form-control" placeholder="APPT123, APPT456, APPT789" />
+        <small style="display: block; margin-top: 0.25rem;">Space, comma, or semicolon separated</small>
+      </div>
+
+      <!-- BUTTONS -->
+      <div class="mb-3 d-flex gap-2">
+        <button id="validateBtn" class="btn btn-secondary px-4">Validate</button>
+        <button id="updateBtn" class="btn btn-primary px-4">Update Appointments</button>
+      </div>
+
+      <!-- PROGRESS -->
+      <div class="progress-container">
+        <div class="progress">
+          <div class="progress-bar" role="progressbar" style="width: 0%" id="progressBar"></div>
+        </div>
+        <div class="mt-2">
+          <div id="progressLabel" style="font-size: 0.9em; color: #999;"></div>
+          <div id="timeLabel" style="font-size: 0.85em; color: #777;"></div>
+        </div>
+      </div>
+
+      <!-- RESULTS -->
+      <div class="mb-3">
+        <label class="form-label">Results:</label>
+        <textarea id="resultsText" class="form-control" readonly></textarea>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const orgInput = document.getElementById('org');
+    const authBtn = document.getElementById('authBtn');
+    const mainUI = document.getElementById('mainUI');
+    const statusEl = document.getElementById('status');
+    const datePicker = document.getElementById('datePicker');
+    const useDefault = document.getElementById('useDefault');
+    const useCsv = document.getElementById('useCsv');
+    const csvFileContainer = document.getElementById('csvFileContainer');
+    const csvFileName = document.getElementById('csvFileName');
+    const csvFileInput = document.getElementById('csvFileInput');
+    const csvBrowseBtn = document.getElementById('csvBrowseBtn');
+    const useAdditional = document.getElementById('useAdditional');
+    const additionalEntry = document.getElementById('additionalEntry');
+    const validateBtn = document.getElementById('validateBtn');
+    const updateBtn = document.getElementById('updateBtn');
+    const clearPrefsBtn = document.getElementById('clearPrefsBtn');
+    const progressBar = document.getElementById('progressBar');
+    const progressLabel = document.getElementById('progressLabel');
+    const timeLabel = document.getElementById('timeLabel');
+    const resultsText = document.getElementById('resultsText');
+
+    let token = null;
+    let startTime = null;
+    let completedCount = 0;
+
+    // Set today as default date (always, never saved)
+    datePicker.valueAsDate = new Date();
+    
+    // Ensure ORG is always blank on load (security)
+    orgInput.value = '';
+
+    // ===== LOCALSTORAGE PERSISTENCE =====
+    const STORAGE_KEY = 'update_appt_preferences';
+    
+    function savePreferences() {
+      const prefs = {
+        useDefault: useDefault.checked,
+        useCsv: useCsv.checked,
+        useAdditional: useAdditional.checked,
+        additionalEntry: additionalEntry.value,
+        csvFileName: csvFileName.value
+      };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
+      } catch (e) {
+        console.warn('Failed to save preferences:', e);
+      }
+    }
+    
+    function loadPreferences() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const prefs = JSON.parse(saved);
+          
+          // Restore checkbox states
+          if (prefs.useDefault !== undefined) useDefault.checked = prefs.useDefault;
+          if (prefs.useCsv !== undefined) useCsv.checked = prefs.useCsv;
+          if (prefs.useAdditional !== undefined) useAdditional.checked = prefs.useAdditional;
+          
+          // Restore additional appointments text
+          if (prefs.additionalEntry !== undefined) additionalEntry.value = prefs.additionalEntry;
+          
+          // Restore CSV filename (file itself can't be saved, but filename can be shown)
+          if (prefs.csvFileName !== undefined) csvFileName.value = prefs.csvFileName;
+          
+          // Update UI visibility based on restored states
+          csvFileContainer.style.display = useCsv.checked ? 'block' : 'none';
+          additionalEntry.style.display = useAdditional.checked ? 'block' : 'none';
+        }
+      } catch (e) {
+        console.warn('Failed to load preferences:', e);
+      }
+    }
+    
+    function clearPreferences() {
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+        // Reset to defaults
+        useDefault.checked = true;
+        useCsv.checked = false;
+        useAdditional.checked = false;
+        additionalEntry.value = '';
+        csvFileName.value = '';
+        csvFileInput.value = '';
+        csvFileContainer.style.display = 'none';
+        additionalEntry.style.display = 'none';
+        savePreferences(); // Save the cleared state
+      } catch (e) {
+        console.warn('Failed to clear preferences:', e);
+      }
+    }
+    
+    // Load preferences on page load
+    loadPreferences();
+    
+    // Always ensure date is today (even after preferences load)
+    datePicker.valueAsDate = new Date();
+
+    // STATUS
+    function status(text, type = 'info') {
+      statusEl.textContent = text;
+      statusEl.className = `status text-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'}`;
+    }
+
+    // API
+    async function api(action, data = {}) {
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = `Bearer ${token}`;
+      return fetch(`/api/${action}`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(data)
+      }).then(r => r.json());
+    }
+
+    // App opened + Focus ORG
+    window.addEventListener('load', () => {
+      api('app_opened', { org: '' });
+      orgInput.focus();
+    });
+
+    // Toggle CSV file container
+    useCsv.addEventListener('change', () => {
+      csvFileContainer.style.display = useCsv.checked ? 'block' : 'none';
+      if (!useCsv.checked) {
+        csvFileInput.value = '';
+        csvFileName.value = '';
+      }
+      savePreferences(); // Auto-save on change
+    });
+
+    // CSV file browse button
+    csvBrowseBtn.addEventListener('click', () => {
+      csvFileInput.click();
+    });
+
+    // CSV file selection handler
+    csvFileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        csvFileName.value = file.name;
+      } else {
+        csvFileName.value = '';
+      }
+      savePreferences(); // Auto-save on change
+    });
+
+    // Toggle additional entry
+    useAdditional.addEventListener('change', () => {
+      additionalEntry.style.display = useAdditional.checked ? 'block' : 'none';
+      if (!useAdditional.checked) additionalEntry.value = '';
+      savePreferences(); // Auto-save on change
+    });
+    
+    // Auto-save when additional appointments text changes (debounced)
+    let additionalEntryTimeout;
+    additionalEntry.addEventListener('input', () => {
+      clearTimeout(additionalEntryTimeout);
+      additionalEntryTimeout = setTimeout(() => {
+        savePreferences();
+      }, 500); // Save 500ms after user stops typing
+    });
+    
+    // Auto-save when useDefault checkbox changes
+    useDefault.addEventListener('change', () => {
+      savePreferences();
+    });
+    
+    // Clear saved preferences button
+    clearPrefsBtn.addEventListener('click', () => {
+      if (confirm('Clear all saved preferences? This will reset checkboxes and text fields to defaults.')) {
+        clearPreferences();
+        status('Preferences cleared', 'success');
+      }
+    });
+
+    // Auth
+    async function authenticate() {
+      const org = orgInput.value.trim();
+      if (!org) {
+        status('ORG required', 'error');
+        mainUI.style.display = 'none';
+        return;
+      }
+      status('Authenticating...');
+      const res = await api('auth', { org });
+      if (!res.success) {
+        status(res.error || 'Auth failed', 'error');
+        mainUI.style.display = 'none';
+        return;
+      }
+      token = res.token;
+      status('Authenticated – ready!', 'success');
+      mainUI.style.display = 'block';
+      setTimeout(() => datePicker.focus(), 100);
+    }
+
+    orgInput.addEventListener('keypress', e => {
+      if (e.key === 'Enter') authenticate();
+    });
+    authBtn.onclick = authenticate;
+
+    // Parse CSV or Excel file and extract appointment IDs
+    async function parseFile(file) {
+      const fileExtension = file.name.split('.').pop().toLowerCase();
+      
+      if (fileExtension === 'csv') {
+        return parseCsvFile(file);
+      } else if (fileExtension === 'xls' || fileExtension === 'xlsx') {
+        return parseExcelFile(file);
+      } else {
+        throw new Error(`Unsupported file type: ${fileExtension}. Please use .csv, .xls, or .xlsx`);
+      }
+    }
+
+    // Parse CSV file
+    async function parseCsvFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        
+        reader.onload = (e) => {
+          try {
+            const text = e.target.result;
+            const lines = text.split('\n').map(line => line.trim()).filter(line => line);
+            
+            if (lines.length === 0) {
+              reject(new Error(`File "${file.name}" is empty`));
+              return;
+            }
+
+            // Parse CSV with proper handling of quoted values
+            function parseCSVLine(line) {
+              const result = [];
+              let current = '';
+              let inQuotes = false;
+              
+              for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') {
+                  inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                  result.push(current.trim().replace(/^"|"$/g, ''));
+                  current = '';
+                } else {
+                  current += char;
+                }
+              }
+              result.push(current.trim().replace(/^"|"$/g, ''));
+              return result;
+            }
+
+            // Parse header row
+            const headers = parseCSVLine(lines[0]);
+            
+            // Find appointment ID column
+            const apptIdColumnIndex = findApptIdColumn(headers, file.name);
+            if (apptIdColumnIndex === -1) {
+              reject(new Error(`No Appointment ID column found in ${file.name}`));
+              return;
+            }
+
+            // Extract appointment IDs from data rows
+            const appointmentIds = [];
+            for (let i = 1; i < lines.length; i++) {
+              const values = parseCSVLine(lines[i]);
+              if (values[apptIdColumnIndex]) {
+                const apptId = values[apptIdColumnIndex].trim();
+                if (apptId) {
+                  appointmentIds.push(apptId);
+                }
+              }
+            }
+
+            if (appointmentIds.length === 0) {
+              reject(new Error(`No appointment IDs found in ${file.name}`));
+              return;
+            }
+
+            resolve(appointmentIds);
+          } catch (error) {
+            reject(new Error(`Error parsing CSV file "${file.name}": ${error.message}`));
+          }
+        };
+        
+        reader.onerror = () => {
+          reject(new Error(`Error reading file "${file.name}"`));
+        };
+        
+        reader.readAsText(file);
+      });
+    }
+
+    // Parse Excel file (.xls or .xlsx)
+    async function parseExcelFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        
+        reader.onload = (e) => {
+          try {
+            if (typeof XLSX === 'undefined') {
+              reject(new Error('Excel parsing library not loaded. Please refresh the page.'));
+              return;
+            }
+
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            
+            if (workbook.SheetNames.length === 0) {
+              reject(new Error(`File "${file.name}" contains no sheets`));
+              return;
+            }
+
+            // Use the first sheet
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            
+            // Convert to JSON array
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+            
+            if (jsonData.length === 0) {
+              reject(new Error(`File "${file.name}" is empty`));
+              return;
+            }
+
+            // Get headers from first row
+            const headers = jsonData[0].map(h => String(h).trim());
+            
+            // Find appointment ID column
+            const apptIdColumnIndex = findApptIdColumn(headers, file.name);
+            if (apptIdColumnIndex === -1) {
+              reject(new Error(`No Appointment ID column found in ${file.name}`));
+              return;
+            }
+
+            // Extract appointment IDs from data rows
+            const appointmentIds = [];
+            for (let i = 1; i < jsonData.length; i++) {
+              const row = jsonData[i];
+              if (row[apptIdColumnIndex]) {
+                const apptId = String(row[apptIdColumnIndex]).trim();
+                if (apptId) {
+                  appointmentIds.push(apptId);
+                }
+              }
+            }
+
+            if (appointmentIds.length === 0) {
+              reject(new Error(`No appointment IDs found in ${file.name}`));
+              return;
+            }
+
+            resolve(appointmentIds);
+          } catch (error) {
+            reject(new Error(`Error parsing Excel file "${file.name}": ${error.message}`));
+          }
+        };
+        
+        reader.onerror = () => {
+          reject(new Error(`Error reading file "${file.name}"`));
+        };
+        
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    // Find appointment ID column index (shared by CSV and Excel parsers)
+    function findApptIdColumn(headers, fileName) {
+      // Normalize header by removing spaces, dashes, underscores, and converting to lowercase
+      for (let i = 0; i < headers.length; i++) {
+        const normalizedHeader = headers[i].replace(/[\s_-]/g, '').toLowerCase();
+        // Match variations: apptid, appointmentid, appt-id, appointment-id, etc.
+        if (normalizedHeader === 'apptid' || normalizedHeader === 'appointmentid' ||
+            normalizedHeader.startsWith('apptid') || normalizedHeader.startsWith('appointmentid')) {
+          return i;
+        }
+      }
+      return -1;
+    }
+
+    // Collect appointment inputs
+    async function collectAppointmentInputs() {
+      const useDefaultChecked = useDefault.checked;
+      const useCsvChecked = useCsv.checked;
+      const useAdditionalChecked = useAdditional.checked;
+
+      if (!useDefaultChecked && !useCsvChecked && !useAdditionalChecked) {
+        status('Select at least one appointment source', 'error');
+        return null;
+      }
+
+      // Handle CSV/Excel file
+      let csvIds = [];
+      if (useCsvChecked) {
+        const file = csvFileInput.files[0];
+        if (!file) {
+          status('Please select a file', 'error');
+          return null;
+        }
+        
+        try {
+          csvIds = await parseFile(file);
+        } catch (error) {
+          status(error.message, 'error');
+          return null;
+        }
+      }
+
+      const additionalIdsRaw = useAdditionalChecked ? additionalEntry.value.trim() : '';
+      if (useAdditionalChecked && !additionalIdsRaw) {
+        status('Enter at least one appointment ID', 'error');
+        return null;
+      }
+
+      return { 
+        useDefault: useDefaultChecked, 
+        csvIds: csvIds,
+        additionalIds: additionalIdsRaw 
+      };
+    }
+
+    // Validate
+    validateBtn.onclick = async () => {
+      if (!token) return status('Authenticate first', 'error');
+      const selection = await collectAppointmentInputs();
+      if (!selection) return;
+
+      const newDate = datePicker.value; // Get date if selected
+      
+      status('Validating appointments...');
+      const res = await api('validate', {
+        org: orgInput.value.trim(),
+        token,
+        useDefault: selection.useDefault,
+        csvIds: selection.csvIds,
+        additionalIds: selection.additionalIds,
+        new_date: newDate || undefined // Pass date if selected
+      });
+
+      if (!res.success) {
+        return status(res.error || 'Validation failed', 'error');
+      }
+      status(res.message || 'All appointments valid', 'success');
+    };
+
+    // Update
+    updateBtn.onclick = async () => {
+      if (!token) return status('Authenticate first', 'error');
+      const newDate = datePicker.value;
+      if (!newDate) return status('Select a date', 'error');
+
+      const selection = await collectAppointmentInputs();
+      if (!selection) return;
+
+      // First validate
+      status('Validating appointments...');
+      const validateRes = await api('validate', {
+        org: orgInput.value.trim(),
+        token,
+        useDefault: selection.useDefault,
+        csvIds: selection.csvIds,
+        additionalIds: selection.additionalIds,
+        new_date: newDate // Pass date for past-date validation
+      });
+
+      if (!validateRes.success) {
+        return status(validateRes.error || 'Validation failed', 'error');
+      }
+
+      // Build appointments list
+      let appointmentsToUpdate = [];
+
+      // Get default appointments if needed
+      if (selection.useDefault) {
+        status('Fetching default appointments...');
+        const defaultRes = await api('get_default_appointments', {});
+        if (defaultRes.success && defaultRes.appointments) {
+          appointmentsToUpdate = defaultRes.appointments.slice(); // Copy array
+        }
+      }
+
+      // If we have CSV IDs, fetch their details and combine
+      if (selection.csvIds && selection.csvIds.length > 0) {
+        status('Fetching CSV appointment details...');
+        const fetchRes = await api('fetch_details', {
+          org: orgInput.value.trim(),
+          token,
+          appt_ids: selection.csvIds
+        });
+
+        if (!fetchRes.success) {
+          return status('Failed to fetch CSV appointment details', 'error');
+        }
+
+        // Deduplicate by Appt-id
+        const existingIds = new Set(appointmentsToUpdate.map(a => a['Appt-id']));
+        for (const appt of (fetchRes.appointments || [])) {
+          if (!existingIds.has(appt['Appt-id'])) {
+            appointmentsToUpdate.push(appt);
+            existingIds.add(appt['Appt-id']);
+          }
+        }
+      }
+
+      // If we have additional IDs, fetch their details and combine
+      if (selection.additionalIds) {
+        const additionalIds = selection.additionalIds.split(/[,\s;]+/).filter(id => id.trim());
+        if (additionalIds.length > 0) {
+          status('Fetching additional appointment details...');
+          const fetchRes = await api('fetch_details', {
+            org: orgInput.value.trim(),
+            token,
+            appt_ids: additionalIds
+          });
+
+          if (!fetchRes.success) {
+            return status('Failed to fetch appointment details', 'error');
+          }
+
+          // Deduplicate by Appt-id
+          const existingIds = new Set(appointmentsToUpdate.map(a => a['Appt-id']));
+          for (const appt of (fetchRes.appointments || [])) {
+            if (!existingIds.has(appt['Appt-id'])) {
+              appointmentsToUpdate.push(appt);
+              existingIds.add(appt['Appt-id']);
+            }
+          }
+        }
+      }
+
+      if (appointmentsToUpdate.length === 0) {
+        return status('No appointments to update', 'error');
+      }
+
+      // Validate that appointments won't be in the past
+      const now = new Date();
+      const pastAppointments = [];
+      
+      for (const appt of appointmentsToUpdate) {
+        const apptTime = appt['Time'] || '00:00:00';
+        const newDateTimeStr = `${newDate}T${apptTime}`;
+        const newDateTime = new Date(newDateTimeStr);
+        
+        if (newDateTime < now) {
+          pastAppointments.push({
+            id: appt['Appt-id'] || 'Unknown',
+            time: apptTime,
+            datetime: newDateTimeStr
+          });
+        }
+      }
+      
+      if (pastAppointments.length > 0) {
+        const pastIds = pastAppointments.map(a => a.id).join(', ');
+        const errorMsg = pastAppointments.length === 1 
+          ? `${pastIds}: Appointment would occur in the past (${pastAppointments[0].datetime})`
+          : `${pastIds}: These appointments would occur in the past`;
+        return status(errorMsg, 'error');
+      }
+
+      // Start update process
+      status('Updating appointments...');
+      resultsText.value = '';
+      progressBar.style.width = '0%';
+      progressLabel.textContent = 'Preparing...';
+      timeLabel.textContent = 'Elapsed: :00 | Remaining: --:--';
+      startTime = Date.now();
+      completedCount = 0;
+
+      // Update appointments one by one for real-time feedback
+      const results = [];
+      let successCount = 0;
+
+      for (let i = 0; i < appointmentsToUpdate.length; i++) {
+        const appt = appointmentsToUpdate[i];
+        const apptId = appt['Appt-id'] || 'Unknown';
+        
+        progressLabel.textContent = `Updating ${apptId}...`;
+        progressBar.style.width = `${((i + 1) / appointmentsToUpdate.length) * 100}%`;
+
+        const updateRes = await api('update', {
+          org: orgInput.value.trim(),
+          token,
+          appointments: [appt],
+          new_date: newDate
+        });
+
+        if (updateRes.success && updateRes.results && updateRes.results.length > 0) {
+          const result = updateRes.results[0];
+          let line;
+          if (result.success) {
+            line = `${result.appt_id}: Success`;
+          } else {
+            // Format error message as "APPT4259: Failed: Appointment Occurs in Past"
+            const errorMsg = result.message || result.error || 'Unknown error';
+            line = `${result.appt_id}: Failed: ${errorMsg}`;
+          }
+          results.push(line);
+          resultsText.value += (resultsText.value ? '\n' : '') + line;
+          resultsText.scrollTop = resultsText.scrollHeight;
+          if (result.success) successCount++;
+        }
+
+        completedCount = i + 1;
+        updateTimeLabel(appointmentsToUpdate.length);
+      }
+
+      const failCount = appointmentsToUpdate.length - successCount;
+      const finalMsg = `Finished: ${appointmentsToUpdate.length} appointments. ${successCount} passed, ${failCount} failed`;
+      status(finalMsg, 'success');
+      progressLabel.textContent = 'Done!';
+      progressBar.style.width = '100%';
+      updateTimeLabel(appointmentsToUpdate.length, true);
+    };
+
+    function updateTimeLabel(total, final = false) {
+      if (!startTime) return;
+      const elapsed = (Date.now() - startTime) / 1000;
+      const mins = Math.floor(elapsed / 60);
+      const secs = Math.floor(elapsed % 60);
+      const hrs = Math.floor(mins / 60);
+      const finalMins = mins % 60;
+
+      let elapsedStr = '';
+      if (hrs > 0) {
+        elapsedStr = `${hrs}:${String(finalMins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+      } else if (finalMins > 0) {
+        elapsedStr = `${finalMins}:${String(secs).padStart(2, '0')}`;
+      } else {
+        elapsedStr = `:${String(secs).padStart(2, '0')}`;
+      }
+
+      if (final || completedCount === 0) {
+        timeLabel.textContent = `Elapsed: ${elapsedStr} | Remaining: --:--`;
+      } else {
+        const avgPer = elapsed / completedCount;
+        const remaining = avgPer * (total - completedCount);
+        const rMins = Math.floor(remaining / 60);
+        const rSecs = Math.floor(remaining % 60);
+        const rHrs = Math.floor(rMins / 60);
+        const rFinalMins = rMins % 60;
+
+        let remainingStr = '';
+        if (rHrs > 0) {
+          remainingStr = `${rHrs}:${String(rFinalMins).padStart(2, '0')}:${String(rSecs).padStart(2, '0')}`;
+        } else if (rFinalMins > 0) {
+          remainingStr = `${rFinalMins}:${String(rSecs).padStart(2, '0')}`;
+        } else {
+          remainingStr = `:${String(rSecs).padStart(2, '0')}`;
+        }
+
+        timeLabel.textContent = `Elapsed: ${elapsedStr} | Remaining: ~${remainingStr} (avg ${avgPer.toFixed(1)}s/call)`;
+      }
+    }
+  </script>
+</body>
+</html>
+
