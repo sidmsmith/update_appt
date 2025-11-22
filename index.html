@@ -307,7 +307,7 @@
           <label for="useAdditional" style="display: inline; font-weight: normal;">Additional Appointments</label>
         </div>
         <input type="text" id="additionalEntry" class="form-control" placeholder="APPT123, APPT456, APPT789" />
-        <small style="display: block; margin-top: 0.25rem;">Space, comma, or semicolon separated</small>
+        <small id="additionalEntryHelp" style="display: none; margin-top: 0.25rem;">Space, comma, or semicolon separated</small>
       </div>
 
       <!-- BUTTONS -->
@@ -364,6 +364,7 @@
     const csvBrowseBtn = document.getElementById('csvBrowseBtn');
     const useAdditional = document.getElementById('useAdditional');
     const additionalEntry = document.getElementById('additionalEntry');
+    const additionalEntryHelp = document.getElementById('additionalEntryHelp');
     const validateBtn = document.getElementById('validateBtn');
     const updateBtn = document.getElementById('updateBtn');
     const clearPrefsBtn = document.getElementById('clearPrefsBtn');
@@ -440,6 +441,9 @@
           // Update UI visibility based on restored states
           csvFileContainer.style.display = useCsv.checked ? 'block' : 'none';
           additionalEntry.style.display = useAdditional.checked ? 'block' : 'none';
+          if (additionalEntryHelp) {
+            additionalEntryHelp.style.display = useAdditional.checked ? 'block' : 'none';
+          }
         }
       } catch (e) {
         console.warn('Failed to load preferences:', e);
@@ -623,6 +627,7 @@
     // Toggle additional entry
     useAdditional.addEventListener('change', () => {
       additionalEntry.style.display = useAdditional.checked ? 'block' : 'none';
+      additionalEntryHelp.style.display = useAdditional.checked ? 'block' : 'none';
       if (!useAdditional.checked) additionalEntry.value = '';
       savePreferences(); // Auto-save on change
     });
