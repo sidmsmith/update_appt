@@ -391,12 +391,16 @@
     let completedCount = 0;
 
     // Set tomorrow as default date (always, never saved)
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    datePicker.valueAsDate = tomorrow;
+    if (datePicker) {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      datePicker.valueAsDate = tomorrow;
+    }
     
     // Ensure ORG is always blank on load (security)
-    orgInput.value = '';
+    if (orgInput) {
+      orgInput.value = '';
+    }
 
     // ===== LOCALSTORAGE PERSISTENCE =====
     const STORAGE_KEY = 'update_appt_preferences';
@@ -683,10 +687,15 @@
       setTimeout(() => datePicker.focus(), 100);
     }
 
-    orgInput.addEventListener('keypress', e => {
-      if (e.key === 'Enter') authenticate();
-    });
-    authBtn.onclick = authenticate;
+    // Auth event listeners
+    if (orgInput) {
+      orgInput.addEventListener('keypress', e => {
+        if (e.key === 'Enter') authenticate();
+      });
+    }
+    if (authBtn) {
+      authBtn.onclick = authenticate;
+    }
 
     // Parse CSV or Excel file and extract appointment IDs
     async function parseFile(file) {
