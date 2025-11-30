@@ -333,6 +333,7 @@
       <div class="mb-3 d-flex gap-2">
         <button id="validateBtn" class="btn btn-secondary px-4">Validate</button>
         <button id="updateBtn" class="btn btn-primary px-4">Update Appointments</button>
+        <button id="stopBtn" class="btn btn-danger px-4" style="display: none;">Stop</button>
       </div>
 
       <!-- PROGRESS -->
@@ -380,6 +381,7 @@
     const apptIdRangeInputs = document.getElementById('apptIdRangeInputs');
     const validateBtn = document.getElementById('validateBtn');
     const updateBtn = document.getElementById('updateBtn');
+    const stopBtn = document.getElementById('stopBtn');
     const clearPrefsBtn = document.getElementById('clearPrefsBtn');
     const progressBar = document.getElementById('progressBar');
     const progressLabel = document.getElementById('progressLabel');
@@ -389,6 +391,7 @@
     let token = null;
     let startTime = null;
     let completedCount = 0;
+    let abortUpdate = false;
 
     // Set tomorrow as default date (always, never saved)
     if (datePicker) {
@@ -1088,6 +1091,15 @@
       return `${year}-${month}-${day}`;
     }
 
+    // Stop button handler
+    if (stopBtn) {
+      stopBtn.onclick = () => {
+        abortUpdate = true;
+        status('Stopping update process...', 'error');
+        stopBtn.style.display = 'none';
+      };
+    }
+
     // Update
     updateBtn.onclick = async () => {
       if (!token) return status('Authenticate first', 'error');
@@ -1096,6 +1108,10 @@
 
       const selection = await collectAppointmentInputs();
       if (!selection) return;
+
+      // Reset abort flag and show stop button
+      abortUpdate = false;
+      if (stopBtn) stopBtn.style.display = 'inline-block';
 
       // Build appointments list
       let appointmentsToUpdate = [];
@@ -1274,6 +1290,14 @@
       let successCount = 0;
 
       for (let i = 0; i < appointmentsToUpdate.length; i++) {
+        // Check if user requested abort
+        if (abortUpdate) {
+          status(`Update aborted by user. Processed ${i} of ${appointmentsToUpdate.length} appointments.`, 'error');
+          progressLabel.textContent = 'Aborted';
+          if (stopBtn) stopBtn.style.display = 'none';
+          return;
+        }
+
         const appt = appointmentsToUpdate[i];
         const apptId = appt['Appt-id'] || 'Unknown';
         
@@ -1312,6 +1336,9 @@
         completedCount = i + 1;
         updateTimeLabel(appointmentsToUpdate.length);
       }
+
+      // Hide stop button when finished
+      if (stopBtn) stopBtn.style.display = 'none';
 
       const failCount = appointmentsToUpdate.length - successCount;
       const finalMsg = `Finished: ${appointmentsToUpdate.length} appointments. ${successCount} passed, ${failCount} failed`;
