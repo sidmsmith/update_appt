@@ -243,8 +243,8 @@
         
         <!-- Source Selection Group -->
         <div class="selection-group source-selection">
-          <div class="selection-group-header">Select by Appointment Source</div>
-          <div class="selection-group-helper">Select one or more methods below</div>
+          <div class="selection-group-header">Single Date Update</div>
+          <div class="selection-group-helper">All selected appointments will be updated to the same "New Date"</div>
           <div class="checkbox-group">
             <input type="checkbox" id="useDefault" checked />
             <label for="useDefault" style="display: inline; font-weight: normal;">Use Default Appointments</label>
@@ -275,24 +275,56 @@
 
         <!-- Date Range Selection Group -->
         <div class="selection-group date-range-selection">
-          <div class="selection-group-header">Select by Date Range</div>
-          <div class="selection-group-helper">Alternative: Filter appointments by date range</div>
+          <div class="selection-group-header">Date Advance</div>
+          <div class="selection-group-helper">Appointments will be advanced by the number of days from the filter range start to "New Date"</div>
           <div class="checkbox-group">
             <input type="checkbox" id="useDateRange" />
-            <label for="useDateRange" style="display: inline; font-weight: normal;">Appointment Date Range</label>
+            <label for="useDateRange" style="display: inline; font-weight: normal;">Appointment Date Advance</label>
           </div>
           <div id="dateRangeContainer" style="display: none; margin-top: 0.75rem;">
-            <div class="d-flex gap-3 align-items-center flex-wrap">
-              <div>
-                <label class="form-label" style="font-size: 0.9em; margin-bottom: 0.25rem;">From Date:</label>
-                <input type="date" id="fromDate" class="form-control" style="width: 180px;" />
-              </div>
-              <div>
-                <label class="form-label" style="font-size: 0.9em; margin-bottom: 0.25rem;">To Date:</label>
-                <input type="date" id="toDate" class="form-control" style="width: 180px;" />
+            <!-- Radio buttons for filter type -->
+            <div class="mb-3">
+              <div class="d-flex gap-4 align-items-center">
+                <div>
+                  <input type="radio" id="filterTypeDate" name="filterType" value="date" checked />
+                  <label for="filterTypeDate" style="display: inline; font-weight: normal; margin-left: 0.5rem;">Date Range</label>
+                </div>
+                <div>
+                  <input type="radio" id="filterTypeApptId" name="filterType" value="apptId" />
+                  <label for="filterTypeApptId" style="display: inline; font-weight: normal; margin-left: 0.5rem;">ApptId Range</label>
+                </div>
               </div>
             </div>
-            <small style="display: block; margin-top: 0.5rem; color: #999;">Appointments within this date range will be selected and advanced by the number of days from "From Date" to "New Date"</small>
+            
+            <!-- Date Range Inputs -->
+            <div id="dateRangeInputs">
+              <div class="d-flex gap-3 align-items-center flex-wrap">
+                <div>
+                  <label class="form-label" style="font-size: 0.9em; margin-bottom: 0.25rem;">From Date:</label>
+                  <input type="date" id="fromDate" class="form-control" style="width: 180px;" />
+                </div>
+                <div>
+                  <label class="form-label" style="font-size: 0.9em; margin-bottom: 0.25rem;">To Date:</label>
+                  <input type="date" id="toDate" class="form-control" style="width: 180px;" />
+                </div>
+              </div>
+              <small style="display: block; margin-top: 0.5rem; color: #999;">Appointments within this date range will be selected and advanced by the number of days from "From Date" to "New Date"</small>
+            </div>
+            
+            <!-- ApptId Range Inputs -->
+            <div id="apptIdRangeInputs" style="display: none;">
+              <div class="d-flex gap-3 align-items-center flex-wrap">
+                <div>
+                  <label class="form-label" style="font-size: 0.9em; margin-bottom: 0.25rem;">From ApptId:</label>
+                  <input type="text" id="fromApptId" class="form-control" style="width: 180px;" placeholder="APPT001" />
+                </div>
+                <div>
+                  <label class="form-label" style="font-size: 0.9em; margin-bottom: 0.25rem;">To ApptId:</label>
+                  <input type="text" id="toApptId" class="form-control" style="width: 180px;" placeholder="APPT100" />
+                </div>
+              </div>
+              <small style="display: block; margin-top: 0.5rem; color: #999;">Appointments with ApptIds within this range will be selected and advanced by the number of days from the earliest appointment date to "New Date"</small>
+            </div>
           </div>
         </div>
       </div>
@@ -339,7 +371,13 @@
     const useDateRange = document.getElementById('useDateRange');
     const fromDate = document.getElementById('fromDate');
     const toDate = document.getElementById('toDate');
+    const fromApptId = document.getElementById('fromApptId');
+    const toApptId = document.getElementById('toApptId');
+    const filterTypeDate = document.getElementById('filterTypeDate');
+    const filterTypeApptId = document.getElementById('filterTypeApptId');
     const dateRangeContainer = document.getElementById('dateRangeContainer');
+    const dateRangeInputs = document.getElementById('dateRangeInputs');
+    const apptIdRangeInputs = document.getElementById('apptIdRangeInputs');
     const validateBtn = document.getElementById('validateBtn');
     const updateBtn = document.getElementById('updateBtn');
     const clearPrefsBtn = document.getElementById('clearPrefsBtn');
@@ -369,8 +407,11 @@
         additionalEntry: additionalEntry.value,
         csvFileName: csvFileName.value,
         useDateRange: useDateRange.checked,
+        filterType: filterTypeDate.checked ? 'date' : 'apptId',
         fromDate: fromDate.value,
-        toDate: toDate.value
+        toDate: toDate.value,
+        fromApptId: fromApptId.value,
+        toApptId: toApptId.value
       };
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
@@ -398,13 +439,23 @@
           
           // Restore date range settings
           if (prefs.useDateRange !== undefined) useDateRange.checked = prefs.useDateRange;
+          if (prefs.filterType !== undefined) {
+            if (prefs.filterType === 'date') {
+              filterTypeDate.checked = true;
+            } else {
+              filterTypeApptId.checked = true;
+            }
+          }
           if (prefs.fromDate !== undefined) fromDate.value = prefs.fromDate;
           if (prefs.toDate !== undefined) toDate.value = prefs.toDate;
+          if (prefs.fromApptId !== undefined) fromApptId.value = prefs.fromApptId;
+          if (prefs.toApptId !== undefined) toApptId.value = prefs.toApptId;
           
           // Update UI visibility based on restored states
           csvFileContainer.style.display = useCsv.checked ? 'block' : 'none';
           additionalEntry.style.display = useAdditional.checked ? 'block' : 'none';
           dateRangeContainer.style.display = useDateRange.checked ? 'block' : 'none';
+          updateFilterTypeDisplay();
         }
       } catch (e) {
         console.warn('Failed to load preferences:', e);
@@ -419,17 +470,32 @@
         useCsv.checked = false;
         useAdditional.checked = false;
         useDateRange.checked = false;
+        filterTypeDate.checked = true;
         additionalEntry.value = '';
         csvFileName.value = '';
         csvFileInput.value = '';
         fromDate.value = '';
         toDate.value = '';
+        fromApptId.value = '';
+        toApptId.value = '';
         csvFileContainer.style.display = 'none';
         additionalEntry.style.display = 'none';
         dateRangeContainer.style.display = 'none';
+        updateFilterTypeDisplay();
         savePreferences(); // Save the cleared state
       } catch (e) {
         console.warn('Failed to clear preferences:', e);
+      }
+    }
+    
+    // Function to update filter type display
+    function updateFilterTypeDisplay() {
+      if (filterTypeDate.checked) {
+        dateRangeInputs.style.display = 'block';
+        apptIdRangeInputs.style.display = 'none';
+      } else {
+        dateRangeInputs.style.display = 'none';
+        apptIdRangeInputs.style.display = 'block';
       }
     }
     
@@ -547,7 +613,23 @@
         csvFileName.value = '';
         additionalEntry.value = '';
       }
+      updateFilterTypeDisplay();
       savePreferences();
+    });
+    
+    // Radio button change handlers
+    filterTypeDate.addEventListener('change', () => {
+      if (filterTypeDate.checked) {
+        updateFilterTypeDisplay();
+        savePreferences();
+      }
+    });
+    
+    filterTypeApptId.addEventListener('change', () => {
+      if (filterTypeApptId.checked) {
+        updateFilterTypeDisplay();
+        savePreferences();
+      }
     });
     
     // Auto-save when date range inputs change
@@ -556,6 +638,15 @@
     });
     
     toDate.addEventListener('change', () => {
+      savePreferences();
+    });
+    
+    // Auto-save when ApptId range inputs change
+    fromApptId.addEventListener('input', () => {
+      savePreferences();
+    });
+    
+    toApptId.addEventListener('input', () => {
       savePreferences();
     });
     
@@ -779,24 +870,45 @@
 
       // Date range mode
       if (useDateRangeChecked) {
-        const fromDateValue = fromDate.value;
-        const toDateValue = toDate.value;
+        const filterType = filterTypeDate.checked ? 'date' : 'apptId';
         
-        if (!fromDateValue || !toDateValue) {
-          status('Please select both From Date and To Date', 'error');
-          return null;
+        if (filterType === 'date') {
+          const fromDateValue = fromDate.value;
+          const toDateValue = toDate.value;
+          
+          if (!fromDateValue || !toDateValue) {
+            status('Please select both From Date and To Date', 'error');
+            return null;
+          }
+          
+          if (new Date(fromDateValue) > new Date(toDateValue)) {
+            status('From Date must be before or equal to To Date', 'error');
+            return null;
+          }
+          
+          return {
+            useDateRange: true,
+            filterType: 'date',
+            fromDate: fromDateValue,
+            toDate: toDateValue
+          };
+        } else {
+          // ApptId range
+          const fromApptIdValue = fromApptId.value.trim();
+          const toApptIdValue = toApptId.value.trim();
+          
+          if (!fromApptIdValue || !toApptIdValue) {
+            status('Please enter both From ApptId and To ApptId', 'error');
+            return null;
+          }
+          
+          return {
+            useDateRange: true,
+            filterType: 'apptId',
+            fromApptId: fromApptIdValue,
+            toApptId: toApptIdValue
+          };
         }
-        
-        if (new Date(fromDateValue) > new Date(toDateValue)) {
-          status('From Date must be before or equal to To Date', 'error');
-          return null;
-        }
-        
-        return {
-          useDateRange: true,
-          fromDate: fromDateValue,
-          toDate: toDateValue
-        };
       }
 
       // Source selection mode
@@ -850,26 +962,50 @@
           return status('Select a New Date for validation', 'error');
         }
         
-        status('Searching appointments by date range...');
-        const searchRes = await api('search_by_date_range', {
+        const searchPayload = {
           org: orgInput.value.trim(),
           token,
-          from_date: selection.fromDate,
-          to_date: selection.toDate
-        });
+          filter_type: selection.filterType
+        };
+        
+        if (selection.filterType === 'date') {
+          searchPayload.from_date = selection.fromDate;
+          searchPayload.to_date = selection.toDate;
+          status('Searching appointments by date range...');
+        } else {
+          searchPayload.from_appt_id = selection.fromApptId;
+          searchPayload.to_appt_id = selection.toApptId;
+          status('Searching appointments by ApptId range...');
+        }
+        
+        const searchRes = await api('search_by_date_range', searchPayload);
 
         if (!searchRes.success) {
           return status(searchRes.error || 'Failed to search appointments', 'error');
         }
 
         if (!searchRes.appointments || searchRes.appointments.length === 0) {
-          return status(`No appointments found in date range ${selection.fromDate} to ${selection.toDate}`, 'error');
+          const rangeDesc = selection.filterType === 'date' 
+            ? `date range ${selection.fromDate} to ${selection.toDate}`
+            : `ApptId range ${selection.fromApptId} to ${selection.toApptId}`;
+          return status(`No appointments found in ${rangeDesc}`, 'error');
         }
 
         // Validate dates won't be in the past
         const now = new Date();
         const pastAppointments = [];
-        const fromDateValue = selection.fromDate;
+        
+        // For ApptId range, find the earliest appointment date to use as "from date"
+        let fromDateValue = selection.fromDate;
+        if (selection.filterType === 'apptId') {
+          if (searchRes.appointments.length > 0) {
+            // Find earliest date
+            const dates = searchRes.appointments.map(a => a['Date']).filter(d => d).sort();
+            if (dates.length > 0) {
+              fromDateValue = dates[0];
+            }
+          }
+        }
         
         for (const appt of searchRes.appointments) {
           const apptTime = appt['Time'] || '00:00:00';
@@ -890,7 +1026,8 @@
           return status(`${pastIds}: ${pastAppointments.length} appointment(s) would occur in the past`, 'error');
         }
         
-        return status(`Found ${searchRes.appointments.length} valid appointment(s) in date range`, 'success');
+        const rangeType = selection.filterType === 'date' ? 'date range' : 'ApptId range';
+        return status(`Found ${searchRes.appointments.length} valid appointment(s) in ${rangeType}`, 'success');
       }
       
       // Source selection mode
@@ -951,26 +1088,51 @@
       // Date range mode
       if (selection.useDateRange) {
         useDateRangeMode = true;
-        fromDateValue = selection.fromDate;
         
-        status('Searching appointments by date range...');
-        const searchRes = await api('search_by_date_range', {
+        const searchPayload = {
           org: orgInput.value.trim(),
           token,
-          from_date: selection.fromDate,
-          to_date: selection.toDate
-        });
+          filter_type: selection.filterType
+        };
+        
+        if (selection.filterType === 'date') {
+          searchPayload.from_date = selection.fromDate;
+          searchPayload.to_date = selection.toDate;
+          fromDateValue = selection.fromDate;
+          status('Searching appointments by date range...');
+        } else {
+          searchPayload.from_appt_id = selection.fromApptId;
+          searchPayload.to_appt_id = selection.toApptId;
+          status('Searching appointments by ApptId range...');
+        }
+        
+        const searchRes = await api('search_by_date_range', searchPayload);
 
         if (!searchRes.success) {
-          return status(searchRes.error || 'Failed to search appointments by date range', 'error');
+          return status(searchRes.error || 'Failed to search appointments', 'error');
         }
 
         if (!searchRes.appointments || searchRes.appointments.length === 0) {
-          return status(`No appointments found in date range ${selection.fromDate} to ${selection.toDate}`, 'error');
+          const rangeDesc = selection.filterType === 'date' 
+            ? `date range ${selection.fromDate} to ${selection.toDate}`
+            : `ApptId range ${selection.fromApptId} to ${selection.toApptId}`;
+          return status(`No appointments found in ${rangeDesc}`, 'error');
         }
 
         appointmentsToUpdate = searchRes.appointments;
-        status(`Found ${appointmentsToUpdate.length} appointments in date range`, 'success');
+        
+        // For ApptId range, find the earliest appointment date to use as "from date"
+        if (selection.filterType === 'apptId') {
+          if (appointmentsToUpdate.length > 0) {
+            const dates = appointmentsToUpdate.map(a => a['Date']).filter(d => d).sort();
+            if (dates.length > 0) {
+              fromDateValue = dates[0];
+            }
+          }
+        }
+        
+        const rangeType = selection.filterType === 'date' ? 'date range' : 'ApptId range';
+        status(`Found ${appointmentsToUpdate.length} appointments in ${rangeType}`, 'success');
       } else {
         // Source selection mode
         // First validate

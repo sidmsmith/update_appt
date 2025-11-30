@@ -510,18 +510,18 @@ def validate():
 
 @app.route('/api/search_by_date_range', methods=['POST'])
 def search_by_date_range():
-    """Search appointments by date range"""
+    """Search appointments by date range or ApptId range"""
     data = request.json
     org = data.get('org', '').strip()
     token = data.get('token', '').strip()
+    filter_type = data.get('filter_type', 'date').strip()
     from_date = data.get('from_date', '').strip()
     to_date = data.get('to_date', '').strip()
+    from_appt_id = data.get('from_appt_id', '').strip()
+    to_appt_id = data.get('to_appt_id', '').strip()
     
     if not org or not token:
         return jsonify({"success": False, "error": "ORG and token required"}), 400
-    
-    if not from_date or not to_date:
-        return jsonify({"success": False, "error": "From date and to date required"}), 400
     
     base_headers = {
         "Authorization": f"Bearer {token}",
@@ -529,14 +529,24 @@ def search_by_date_range():
         "selectedLocation": f"{org}-DM1"
     }
     
-    # Build query for date range search
-    # Assuming the API uses PreferredDateTime or ArrivalDateTime field
-    # Format: YYYY-MM-DD
-    query = f"PreferredDateTime >= '{from_date}T00:00:00' AND PreferredDateTime <= '{to_date}T23:59:59'"
-    
     url = f"https://{API_HOST}/appointment/api/appointment/appointment/search"
     headers = base_headers.copy()
     headers["Content-Type"] = "application/json"
+    
+    # Build query based on filter type
+    if filter_type == 'apptId':
+        if not from_appt_id or not to_appt_id:
+            return jsonify({"success": False, "error": "From ApptId and To ApptId required"}), 400
+        
+        # Search by ApptId range - need to fetch all and filter
+        # Since we can't do range queries on ApptId directly, we'll search for a broader set
+        # and filter client-side, or use a pattern if the API supports it
+        query = f"AppointmentId >= '{from_appt_id}' AND AppointmentId <= '{to_appt_id}'"
+    else:
+        # Date range
+        if not from_date or not to_date:
+            return jsonify({"success": False, "error": "From date and to date required"}), 400
+        query = f"PreferredDateTime >= '{from_date}T00:00:00' AND PreferredDateTime <= '{to_date}T23:59:59'"
     
     payload = {
         "Query": query,
@@ -551,6 +561,13 @@ def search_by_date_range():
         
         appointments = []
         for item in data:
+            appt_id = item.get("AppointmentId", "")
+            
+            # For ApptId range, filter by ApptId comparison
+            if filter_type == 'apptId':
+                if not (from_appt_id <= appt_id <= to_appt_id):
+                    continue
+            
             appt_date = item.get("PreferredDateTime", "") or item.get("ArrivalDateTime", "")
             if not appt_date:
                 continue
@@ -559,16 +576,19 @@ def search_by_date_range():
             date_part = appt_date.split('T')[0] if 'T' in appt_date else appt_date.split(' ')[0]
             time_part = appt_date.split('T')[1].split('.')[0] if 'T' in appt_date else (item.get("Time", "00:00:00") if "Time" in item else "00:00:00")
             
-            # Check if date is within range
-            if from_date <= date_part <= to_date:
-                appointments.append({
-                    "Appt-id": item.get("AppointmentId", ""),
-                    "Asn-id": item.get("Asn", [{}])[0].get("AsnId", "") if item.get("Asn") else "",
-                    "Carrier-id": item.get("CarrierId", ""),
-                    "Trailer-id": item.get("TrailerId", ""),
-                    "Date": date_part,
-                    "Time": time_part
-                })
+            # For date range, check if date is within range
+            if filter_type == 'date':
+                if not (from_date <= date_part <= to_date):
+                    continue
+            
+            appointments.append({
+                "Appt-id": appt_id,
+                "Asn-id": item.get("Asn", [{}])[0].get("AsnId", "") if item.get("Asn") else "",
+                "Carrier-id": item.get("CarrierId", ""),
+                "Trailer-id": item.get("TrailerId", ""),
+                "Date": date_part,
+                "Time": time_part
+            })
         
         return jsonify({
             "success": True,
@@ -576,7 +596,7 @@ def search_by_date_range():
             "count": len(appointments)
         })
     except Exception as e:
-        print(f"[SEARCH_DATE_RANGE] Error: {e}")
+        print(f"[SEARCH_RANGE] Error: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/fetch_details', methods=['POST'])
