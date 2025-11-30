@@ -508,6 +508,77 @@ def validate():
     print("=" * 80)
     return jsonify({"success": True, "message": success_msg})
 
+@app.route('/api/search_by_date_range', methods=['POST'])
+def search_by_date_range():
+    """Search appointments by date range"""
+    data = request.json
+    org = data.get('org', '').strip()
+    token = data.get('token', '').strip()
+    from_date = data.get('from_date', '').strip()
+    to_date = data.get('to_date', '').strip()
+    
+    if not org or not token:
+        return jsonify({"success": False, "error": "ORG and token required"}), 400
+    
+    if not from_date or not to_date:
+        return jsonify({"success": False, "error": "From date and to date required"}), 400
+    
+    base_headers = {
+        "Authorization": f"Bearer {token}",
+        "selectedOrganization": org,
+        "selectedLocation": f"{org}-DM1"
+    }
+    
+    # Build query for date range search
+    # Assuming the API uses PreferredDateTime or ArrivalDateTime field
+    # Format: YYYY-MM-DD
+    query = f"PreferredDateTime >= '{from_date}T00:00:00' AND PreferredDateTime <= '{to_date}T23:59:59'"
+    
+    url = f"https://{API_HOST}/appointment/api/appointment/appointment/search"
+    headers = base_headers.copy()
+    headers["Content-Type"] = "application/json"
+    
+    payload = {
+        "Query": query,
+        "Size": 1000,  # Adjust as needed
+        "Page": 0
+    }
+    
+    try:
+        r = requests.post(url, json=payload, headers=headers, timeout=30, verify=False)
+        r.raise_for_status()
+        data = r.json().get("data", [])
+        
+        appointments = []
+        for item in data:
+            appt_date = item.get("PreferredDateTime", "") or item.get("ArrivalDateTime", "")
+            if not appt_date:
+                continue
+                
+            # Extract date part (YYYY-MM-DD)
+            date_part = appt_date.split('T')[0] if 'T' in appt_date else appt_date.split(' ')[0]
+            time_part = appt_date.split('T')[1].split('.')[0] if 'T' in appt_date else (item.get("Time", "00:00:00") if "Time" in item else "00:00:00")
+            
+            # Check if date is within range
+            if from_date <= date_part <= to_date:
+                appointments.append({
+                    "Appt-id": item.get("AppointmentId", ""),
+                    "Asn-id": item.get("Asn", [{}])[0].get("AsnId", "") if item.get("Asn") else "",
+                    "Carrier-id": item.get("CarrierId", ""),
+                    "Trailer-id": item.get("TrailerId", ""),
+                    "Date": date_part,
+                    "Time": time_part
+                })
+        
+        return jsonify({
+            "success": True,
+            "appointments": appointments,
+            "count": len(appointments)
+        })
+    except Exception as e:
+        print(f"[SEARCH_DATE_RANGE] Error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @app.route('/api/fetch_details', methods=['POST'])
 def fetch_details():
     org = request.json.get('org')

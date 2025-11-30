@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Update Appointment Date v3.2.0</title>
+  <title>Update Appointment Date v3.1.0</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
@@ -20,36 +19,6 @@
       --blue-select: #339af0;
       --success: #28a745;
       --primary: #0d6efd;
-    }
-    
-    /* Dark theme (existing theme) */
-    :root.theme-dark {
-      --bg-dark: #121212;
-      --card-bg: #1e1e1e;
-      --input-bg: #2d2d2d;
-      --border: #333;
-      --text: #e0e0e0;
-      --red-bg: #4a1a1a;
-      --red-text: #ff6b6b;
-      --blue-select: #339af0;
-      --success: #28a745;
-      --primary: #0d6efd;
-    }
-    
-    /* Manhattan theme */
-    :root.theme-manhattan {
-      --bg-dark: rgb(45, 47, 59);
-      --card-bg: #484e5e;
-      --input-bg: #282c34;
-      --border: #333;
-      --text: #495057;
-      --red-bg: #4a1a1a;
-      --red-text: #ff6b6b;
-      --blue-select: #339af0;
-      --success: hsl(142.1 76.2% 36.3%);
-      --primary: #3B82F6;
-      --secondary: #6c757d;
-      --shadow: 0 4px 12px rgba(0,0,0,0.3);
     }
 
     body { 
@@ -94,22 +63,6 @@
     .btn-primary:hover { background: #0b5ed7; }
     .btn-success:hover { background: #218838; }
     .btn-secondary:hover { background: #5a6268; }
-    
-    /* Manhattan theme: Validate button uses blue color like Update Appointments */
-    :root.theme-manhattan #validateBtn {
-      background: #3B82F6;
-    }
-    
-    :root.theme-manhattan #validateBtn:hover {
-      background: #2563eb;
-    }
-    
-    /* Manhattan theme: Appointment Selection section text color white for better readability */
-    :root.theme-manhattan .selection-frame,
-    :root.theme-manhattan .selection-frame label,
-    :root.theme-manhattan .selection-frame .checkbox-group label {
-      color: #ffffff;
-    }
 
     .status-bar {
       display: flex;
@@ -127,63 +80,6 @@
     .form-label { color: #bbbbbb; font-weight: 600; }
     small { color: #999; }
     h2 { color: var(--primary); }
-    
-    /* Theme selector gear icon */
-    .theme-selector-btn {
-      position: absolute;
-      top: 1rem;
-      right: 1rem;
-      background: none;
-      border: none;
-      color: #e0e0e0;
-      padding: 0.5rem;
-      cursor: pointer;
-      font-size: 1.5rem;
-      z-index: 1000;
-      transition: transform 0.2s;
-      display: block !important;
-      visibility: visible !important;
-      opacity: 1 !important;
-    }
-    
-    .theme-selector-btn:hover {
-      transform: rotate(90deg);
-    }
-    
-    /* Ensure gear icon is visible in all themes with proper contrast */
-    :root.theme-manhattan .theme-selector-btn {
-      color: #e0e0e0;
-    }
-    
-    /* Modal styling */
-    .modal-content {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      color: var(--text);
-    }
-    
-    .modal-header {
-      border-bottom: 1px solid var(--border);
-    }
-    
-    .modal-title {
-      color: var(--text);
-    }
-    
-    .list-group-item {
-      background: var(--input-bg);
-      border-color: var(--border);
-      color: var(--text);
-    }
-    
-    .list-group-item:hover {
-      background: #333;
-    }
-    
-    .list-group-item.active {
-      background: var(--primary);
-      border-color: var(--primary);
-    }
 
     /* HIDDEN UNTIL AUTH */
     #mainUI { display: none; }
@@ -201,6 +97,66 @@
       font-weight: 600;
       margin-bottom: 0.5rem;
       display: block;
+    }
+
+    /* SELECTION GROUPS */
+    .selection-group {
+      padding: 0.75rem;
+      border-radius: 6px;
+      margin-bottom: 0.5rem;
+    }
+
+    .selection-group.source-selection {
+      background: rgba(13, 110, 253, 0.05);
+      border: 1px solid rgba(13, 110, 253, 0.2);
+    }
+
+    .selection-group.date-range-selection {
+      background: rgba(40, 167, 69, 0.05);
+      border: 1px solid rgba(40, 167, 69, 0.2);
+    }
+
+    .selection-group-header {
+      font-weight: 600;
+      font-size: 0.9em;
+      color: var(--primary);
+      margin-bottom: 0.5rem;
+    }
+
+    .selection-group.date-range-selection .selection-group-header {
+      color: var(--success);
+    }
+
+    .selection-group-helper {
+      font-size: 0.8em;
+      color: #999;
+      margin-top: 0.25rem;
+      font-style: italic;
+    }
+
+    .selection-divider {
+      text-align: center;
+      margin: 1rem 0;
+      position: relative;
+    }
+
+    .selection-divider::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 50%;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .selection-divider span {
+      background: var(--input-bg);
+      padding: 0 1rem;
+      position: relative;
+      color: #999;
+      font-size: 0.85em;
+      font-weight: 600;
     }
 
     .checkbox-group {
@@ -252,14 +208,11 @@
   </style>
 </head>
 <body>
-  <div class="main-card" style="position: relative;">
-    <button class="theme-selector-btn" id="themeSelectorBtn" title="Select Theme">
-      <i class="fas fa-cog"></i>
-    </button>
-    <h2 class="text-center mb-4">Update Appointment Date v3.2.0</h2>
+  <div class="main-card">
+    <h2 class="text-center mb-4">Update Appointment Date v3.1.0</h2>
 
     <!-- ORG -->
-    <div id="authSection" class="mb-3">
+    <div class="mb-3">
       <label class="form-label">ORG:</label>
       <div class="d-flex align-items-center gap-2">
         <input type="text" id="org" class="form-control" placeholder="Enter ORG" maxlength="20" style="width: 250px; max-width: 100%;" />
@@ -287,27 +240,61 @@
           <label style="margin-bottom: 0;">Appointment Selection</label>
           <button type="button" id="clearPrefsBtn" class="btn btn-sm btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" title="Clear saved preferences">Clear Saved</button>
         </div>
-        <div class="checkbox-group">
-          <input type="checkbox" id="useDefault" checked />
-          <label for="useDefault" style="display: inline; font-weight: normal;">Use Default Appointments</label>
+        
+        <!-- Source Selection Group -->
+        <div class="selection-group source-selection">
+          <div class="selection-group-header">Select by Appointment Source</div>
+          <div class="selection-group-helper">Select one or more methods below</div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="useDefault" checked />
+            <label for="useDefault" style="display: inline; font-weight: normal;">Use Default Appointments</label>
+          </div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="useCsv" />
+            <label for="useCsv" style="display: inline; font-weight: normal;">Appointment CSV File</label>
+          </div>
+          <div id="csvFileContainer" style="display: none; margin-top: 0.5rem;">
+            <div class="d-flex gap-2 align-items-center">
+              <input type="text" id="csvFileName" class="form-control" placeholder="No file selected" readonly style="flex: 1;" />
+              <input type="file" id="csvFileInput" accept=".csv,.xls,.xlsx" style="display: none;" />
+              <button type="button" id="csvBrowseBtn" class="btn btn-secondary">Browse</button>
+            </div>
+          </div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="useAdditional" />
+            <label for="useAdditional" style="display: inline; font-weight: normal;">Additional Appointments</label>
+          </div>
+          <input type="text" id="additionalEntry" class="form-control" placeholder="APPT123, APPT456, APPT789" />
+          <small style="display: block; margin-top: 0.25rem;">Space, comma, or semicolon separated</small>
         </div>
-        <div class="checkbox-group">
-          <input type="checkbox" id="useCsv" />
-          <label for="useCsv" style="display: inline; font-weight: normal;">Appointment CSV File</label>
+
+        <!-- Divider -->
+        <div class="selection-divider">
+          <span>OR</span>
         </div>
-        <div id="csvFileContainer" style="display: none; margin-top: 0.5rem;">
-          <div class="d-flex gap-2 align-items-center">
-            <input type="text" id="csvFileName" class="form-control" placeholder="No file selected" readonly style="flex: 1;" />
-            <input type="file" id="csvFileInput" accept=".csv,.xls,.xlsx" style="display: none;" />
-            <button type="button" id="csvBrowseBtn" class="btn btn-secondary">Browse</button>
+
+        <!-- Date Range Selection Group -->
+        <div class="selection-group date-range-selection">
+          <div class="selection-group-header">Select by Date Range</div>
+          <div class="selection-group-helper">Alternative: Filter appointments by date range</div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="useDateRange" />
+            <label for="useDateRange" style="display: inline; font-weight: normal;">Appointment Date Range</label>
+          </div>
+          <div id="dateRangeContainer" style="display: none; margin-top: 0.75rem;">
+            <div class="d-flex gap-3 align-items-center flex-wrap">
+              <div>
+                <label class="form-label" style="font-size: 0.9em; margin-bottom: 0.25rem;">From Date:</label>
+                <input type="date" id="fromDate" class="form-control" style="width: 180px;" />
+              </div>
+              <div>
+                <label class="form-label" style="font-size: 0.9em; margin-bottom: 0.25rem;">To Date:</label>
+                <input type="date" id="toDate" class="form-control" style="width: 180px;" />
+              </div>
+            </div>
+            <small style="display: block; margin-top: 0.5rem; color: #999;">Appointments within this date range will be selected and advanced by the number of days from "From Date" to "New Date"</small>
           </div>
         </div>
-        <div class="checkbox-group">
-          <input type="checkbox" id="useAdditional" />
-          <label for="useAdditional" style="display: inline; font-weight: normal;">Additional Appointments</label>
-        </div>
-        <input type="text" id="additionalEntry" class="form-control" placeholder="APPT123, APPT456, APPT789" />
-        <small id="additionalEntryHelp" style="display: none; margin-top: 0.25rem;">Space, comma, or semicolon separated</small>
       </div>
 
       <!-- BUTTONS -->
@@ -335,21 +322,6 @@
     </div>
   </div>
 
-  <!-- THEME SELECTOR MODAL -->
-  <div class="modal fade" id="themeModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Select Theme</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <div class="list-group" id="themeList"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <script>
     const orgInput = document.getElementById('org');
     const authBtn = document.getElementById('authBtn');
@@ -364,7 +336,10 @@
     const csvBrowseBtn = document.getElementById('csvBrowseBtn');
     const useAdditional = document.getElementById('useAdditional');
     const additionalEntry = document.getElementById('additionalEntry');
-    const additionalEntryHelp = document.getElementById('additionalEntryHelp');
+    const useDateRange = document.getElementById('useDateRange');
+    const fromDate = document.getElementById('fromDate');
+    const toDate = document.getElementById('toDate');
+    const dateRangeContainer = document.getElementById('dateRangeContainer');
     const validateBtn = document.getElementById('validateBtn');
     const updateBtn = document.getElementById('updateBtn');
     const clearPrefsBtn = document.getElementById('clearPrefsBtn');
@@ -377,31 +352,11 @@
     let startTime = null;
     let completedCount = 0;
 
-    // URL Parameters for cross-app integration
-    const urlParams = new URLSearchParams(window.location.search);
-    const locationParam = urlParams.get('Location');
-    const organizationParam = urlParams.get('Organization');
-    const businessUnitParam = urlParams.get('BusinessUnit');
-    
-    // Store URL parameters for use
-    const urlLocation = locationParam || null;
-    const urlOrg = organizationParam || null;
-    const urlBusinessUnit = businessUnitParam || null;
-    
     // Set today as default date (always, never saved)
     datePicker.valueAsDate = new Date();
     
-    // Ensure ORG is blank on load (security) unless from URL
-    if (urlOrg) {
-      orgInput.value = urlOrg.trim();
-      // Hide auth section when auto-authenticating
-      const authSection = document.getElementById('authSection');
-      if (authSection) {
-        authSection.style.display = 'none';
-      }
-    } else {
-      orgInput.value = '';
-    }
+    // Ensure ORG is always blank on load (security)
+    orgInput.value = '';
 
     // ===== LOCALSTORAGE PERSISTENCE =====
     const STORAGE_KEY = 'update_appt_preferences';
@@ -412,7 +367,10 @@
         useCsv: useCsv.checked,
         useAdditional: useAdditional.checked,
         additionalEntry: additionalEntry.value,
-        csvFileName: csvFileName.value
+        csvFileName: csvFileName.value,
+        useDateRange: useDateRange.checked,
+        fromDate: fromDate.value,
+        toDate: toDate.value
       };
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
@@ -438,12 +396,15 @@
           // Restore CSV filename (file itself can't be saved, but filename can be shown)
           if (prefs.csvFileName !== undefined) csvFileName.value = prefs.csvFileName;
           
+          // Restore date range settings
+          if (prefs.useDateRange !== undefined) useDateRange.checked = prefs.useDateRange;
+          if (prefs.fromDate !== undefined) fromDate.value = prefs.fromDate;
+          if (prefs.toDate !== undefined) toDate.value = prefs.toDate;
+          
           // Update UI visibility based on restored states
           csvFileContainer.style.display = useCsv.checked ? 'block' : 'none';
           additionalEntry.style.display = useAdditional.checked ? 'block' : 'none';
-          if (additionalEntryHelp) {
-            additionalEntryHelp.style.display = useAdditional.checked ? 'block' : 'none';
-          }
+          dateRangeContainer.style.display = useDateRange.checked ? 'block' : 'none';
         }
       } catch (e) {
         console.warn('Failed to load preferences:', e);
@@ -457,11 +418,15 @@
         useDefault.checked = true;
         useCsv.checked = false;
         useAdditional.checked = false;
+        useDateRange.checked = false;
         additionalEntry.value = '';
         csvFileName.value = '';
         csvFileInput.value = '';
+        fromDate.value = '';
+        toDate.value = '';
         csvFileContainer.style.display = 'none';
         additionalEntry.style.display = 'none';
+        dateRangeContainer.style.display = 'none';
         savePreferences(); // Save the cleared state
       } catch (e) {
         console.warn('Failed to clear preferences:', e);
@@ -491,122 +456,13 @@
       }).then(r => r.json());
     }
 
-    // ===== THEME SYSTEM =====
-    const THEME_STORAGE_KEY = 'update_appt_theme';
-    const themeSelectorBtn = document.getElementById('themeSelectorBtn');
-    const themeModal = new bootstrap.Modal(document.getElementById('themeModal'));
-    const themeList = document.getElementById('themeList');
-    
-    const themes = {
-      dark: {
-        name: 'Dark',
-        rootClass: 'theme-dark'
-      },
-      manhattan: {
-        name: 'Manhattan',
-        rootClass: 'theme-manhattan'
-      }
-    };
-    
-    // Load saved theme or default to dark
-    function loadTheme() {
-      const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) || 'dark';
-      applyTheme(savedTheme);
-    }
-    
-    // Apply theme
-    function applyTheme(themeName) {
-      const root = document.documentElement;
-      const theme = themes[themeName] || themes.dark;
-      
-      // Remove all theme classes
-      Object.values(themes).forEach(t => {
-        if (t.rootClass) {
-          root.classList.remove(t.rootClass);
-        }
-      });
-      
-      // Apply selected theme
-      if (theme.rootClass) {
-        root.classList.add(theme.rootClass);
-      }
-      
-      // Save to localStorage
-      localStorage.setItem(THEME_STORAGE_KEY, themeName);
-    }
-    
-    // Render theme list in modal
-    function renderThemeList() {
-      themeList.innerHTML = '';
-      const currentTheme = localStorage.getItem(THEME_STORAGE_KEY) || 'dark';
-      
-      Object.entries(themes).forEach(([key, theme]) => {
-        const item = document.createElement('button');
-        item.type = 'button';
-        item.className = `list-group-item list-group-item-action ${key === currentTheme ? 'active' : ''}`;
-        item.textContent = theme.name;
-        item.onclick = () => {
-          applyTheme(key);
-          themeModal.hide();
-        };
-        themeList.appendChild(item);
-      });
-    }
-    
-    // Theme selector button click handler
-    if (themeSelectorBtn) {
-      themeSelectorBtn.onclick = () => {
-        renderThemeList();
-        themeModal.show();
-      };
-      
-      // Ensure button is always visible after theme changes
-      const observer = new MutationObserver(() => {
-        if (themeSelectorBtn) {
-          themeSelectorBtn.style.display = 'block';
-          themeSelectorBtn.style.visibility = 'visible';
-        }
-      });
-      
-      // Observe theme class changes on root element
-      observer.observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ['class']
-      });
-    }
-    
-    // Load theme on page load
-    loadTheme();
-    
-    // Ensure gear icon is visible after theme loads
-    if (themeSelectorBtn) {
-      setTimeout(() => {
-        themeSelectorBtn.style.display = 'block';
-        themeSelectorBtn.style.visibility = 'visible';
-      }, 100);
-    }
-
     // App opened + Focus ORG
     window.addEventListener('load', () => {
-      api('app_opened', { org: urlOrg || '' });
-      
-      // Auto-authenticate if Organization parameter is provided in URL
-      if (urlOrg) {
-        authenticate();
-      } else {
-        orgInput.focus();
-      }
+      api('app_opened', { org: '' });
+      orgInput.focus();
     });
 
-    // Toggle CSV file container
-    useCsv.addEventListener('change', () => {
-      csvFileContainer.style.display = useCsv.checked ? 'block' : 'none';
-      if (!useCsv.checked) {
-        csvFileInput.value = '';
-        csvFileName.value = '';
-      }
-      savePreferences(); // Auto-save on change
-    });
+    // Note: useCsv event handler moved below for mutual exclusivity
 
     // CSV file browse button
     csvBrowseBtn.addEventListener('click', () => {
@@ -624,13 +480,7 @@
       savePreferences(); // Auto-save on change
     });
 
-    // Toggle additional entry
-    useAdditional.addEventListener('change', () => {
-      additionalEntry.style.display = useAdditional.checked ? 'block' : 'none';
-      additionalEntryHelp.style.display = useAdditional.checked ? 'block' : 'none';
-      if (!useAdditional.checked) additionalEntry.value = '';
-      savePreferences(); // Auto-save on change
-    });
+    // Note: useAdditional event handler moved below for mutual exclusivity
     
     // Auto-save when additional appointments text changes (debounced)
     let additionalEntryTimeout;
@@ -643,6 +493,69 @@
     
     // Auto-save when useDefault checkbox changes
     useDefault.addEventListener('change', () => {
+      // Mutual exclusivity: if source selection is checked, uncheck date range
+      if (useDefault.checked || useCsv.checked || useAdditional.checked) {
+        if (useDateRange.checked) {
+          useDateRange.checked = false;
+          dateRangeContainer.style.display = 'none';
+        }
+      }
+      savePreferences();
+    });
+    
+    // Mutual exclusivity for source selection checkboxes
+    useCsv.addEventListener('change', () => {
+      csvFileContainer.style.display = useCsv.checked ? 'block' : 'none';
+      if (!useCsv.checked) {
+        csvFileInput.value = '';
+        csvFileName.value = '';
+      }
+      // Mutual exclusivity: if source selection is checked, uncheck date range
+      if (useDefault.checked || useCsv.checked || useAdditional.checked) {
+        if (useDateRange.checked) {
+          useDateRange.checked = false;
+          dateRangeContainer.style.display = 'none';
+        }
+      }
+      savePreferences();
+    });
+    
+    useAdditional.addEventListener('change', () => {
+      additionalEntry.style.display = useAdditional.checked ? 'block' : 'none';
+      if (!useAdditional.checked) additionalEntry.value = '';
+      // Mutual exclusivity: if source selection is checked, uncheck date range
+      if (useDefault.checked || useCsv.checked || useAdditional.checked) {
+        if (useDateRange.checked) {
+          useDateRange.checked = false;
+          dateRangeContainer.style.display = 'none';
+        }
+      }
+      savePreferences();
+    });
+    
+    // Date range checkbox - mutual exclusivity
+    useDateRange.addEventListener('change', () => {
+      dateRangeContainer.style.display = useDateRange.checked ? 'block' : 'none';
+      // Mutual exclusivity: if date range is checked, uncheck all source selections
+      if (useDateRange.checked) {
+        useDefault.checked = false;
+        useCsv.checked = false;
+        useAdditional.checked = false;
+        csvFileContainer.style.display = 'none';
+        additionalEntry.style.display = 'none';
+        csvFileInput.value = '';
+        csvFileName.value = '';
+        additionalEntry.value = '';
+      }
+      savePreferences();
+    });
+    
+    // Auto-save when date range inputs change
+    fromDate.addEventListener('change', () => {
+      savePreferences();
+    });
+    
+    toDate.addEventListener('change', () => {
       savePreferences();
     });
     
@@ -862,7 +775,31 @@
       const useDefaultChecked = useDefault.checked;
       const useCsvChecked = useCsv.checked;
       const useAdditionalChecked = useAdditional.checked;
+      const useDateRangeChecked = useDateRange.checked;
 
+      // Date range mode
+      if (useDateRangeChecked) {
+        const fromDateValue = fromDate.value;
+        const toDateValue = toDate.value;
+        
+        if (!fromDateValue || !toDateValue) {
+          status('Please select both From Date and To Date', 'error');
+          return null;
+        }
+        
+        if (new Date(fromDateValue) > new Date(toDateValue)) {
+          status('From Date must be before or equal to To Date', 'error');
+          return null;
+        }
+        
+        return {
+          useDateRange: true,
+          fromDate: fromDateValue,
+          toDate: toDateValue
+        };
+      }
+
+      // Source selection mode
       if (!useDefaultChecked && !useCsvChecked && !useAdditionalChecked) {
         status('Select at least one appointment source', 'error');
         return null;
@@ -894,7 +831,8 @@
       return { 
         useDefault: useDefaultChecked, 
         csvIds: csvIds,
-        additionalIds: additionalIdsRaw 
+        additionalIds: additionalIdsRaw,
+        useDateRange: false
       };
     }
 
@@ -906,6 +844,56 @@
 
       const newDate = datePicker.value; // Get date if selected
       
+      // Date range mode - search and validate
+      if (selection.useDateRange) {
+        if (!newDate) {
+          return status('Select a New Date for validation', 'error');
+        }
+        
+        status('Searching appointments by date range...');
+        const searchRes = await api('search_by_date_range', {
+          org: orgInput.value.trim(),
+          token,
+          from_date: selection.fromDate,
+          to_date: selection.toDate
+        });
+
+        if (!searchRes.success) {
+          return status(searchRes.error || 'Failed to search appointments', 'error');
+        }
+
+        if (!searchRes.appointments || searchRes.appointments.length === 0) {
+          return status(`No appointments found in date range ${selection.fromDate} to ${selection.toDate}`, 'error');
+        }
+
+        // Validate dates won't be in the past
+        const now = new Date();
+        const pastAppointments = [];
+        const fromDateValue = selection.fromDate;
+        
+        for (const appt of searchRes.appointments) {
+          const apptTime = appt['Time'] || '00:00:00';
+          const calculatedDate = calculateNewDateForAppointment(appt, fromDateValue, newDate);
+          const newDateTimeStr = `${calculatedDate}T${apptTime}`;
+          const newDateTime = new Date(newDateTimeStr);
+          
+          if (newDateTime < now) {
+            pastAppointments.push({
+              id: appt['Appt-id'] || 'Unknown',
+              datetime: newDateTimeStr
+            });
+          }
+        }
+        
+        if (pastAppointments.length > 0) {
+          const pastIds = pastAppointments.map(a => a.id).join(', ');
+          return status(`${pastIds}: ${pastAppointments.length} appointment(s) would occur in the past`, 'error');
+        }
+        
+        return status(`Found ${searchRes.appointments.length} valid appointment(s) in date range`, 'success');
+      }
+      
+      // Source selection mode
       status('Validating appointments...');
       const res = await api('validate', {
         org: orgInput.value.trim(),
@@ -922,6 +910,30 @@
       status(res.message || 'All appointments valid', 'success');
     };
 
+    // Helper function to calculate date offset and apply to appointment
+    function calculateNewDateForAppointment(appt, fromDate, newDate) {
+      const apptDate = appt['Date'] || appt['PreferredDateTime']?.split('T')[0];
+      if (!apptDate) return newDate; // Fallback to newDate if no date found
+      
+      const fromDateObj = new Date(fromDate);
+      const newDateObj = new Date(newDate);
+      const apptDateObj = new Date(apptDate);
+      
+      // Calculate offset in days
+      const offsetDays = Math.round((newDateObj - fromDateObj) / (1000 * 60 * 60 * 24));
+      
+      // Apply offset to appointment date
+      const newApptDateObj = new Date(apptDateObj);
+      newApptDateObj.setDate(newApptDateObj.getDate() + offsetDays);
+      
+      // Format as YYYY-MM-DD
+      const year = newApptDateObj.getFullYear();
+      const month = String(newApptDateObj.getMonth() + 1).padStart(2, '0');
+      const day = String(newApptDateObj.getDate()).padStart(2, '0');
+      
+      return `${year}-${month}-${day}`;
+    }
+
     // Update
     updateBtn.onclick = async () => {
       if (!token) return status('Authenticate first', 'error');
@@ -931,69 +943,71 @@
       const selection = await collectAppointmentInputs();
       if (!selection) return;
 
-      // First validate
-      status('Validating appointments...');
-      const validateRes = await api('validate', {
-        org: orgInput.value.trim(),
-        token,
-        useDefault: selection.useDefault,
-        csvIds: selection.csvIds,
-        additionalIds: selection.additionalIds,
-        new_date: newDate // Pass date for past-date validation
-      });
-
-      if (!validateRes.success) {
-        return status(validateRes.error || 'Validation failed', 'error');
-      }
-
       // Build appointments list
       let appointmentsToUpdate = [];
+      let useDateRangeMode = false;
+      let fromDateValue = null;
 
-      // Get default appointments if needed
-      if (selection.useDefault) {
-        status('Fetching default appointments...');
-        const defaultRes = await api('get_default_appointments', {});
-        if (defaultRes.success && defaultRes.appointments) {
-          appointmentsToUpdate = defaultRes.appointments.slice(); // Copy array
-        }
-      }
-
-      // If we have CSV IDs, fetch their details and combine
-      if (selection.csvIds && selection.csvIds.length > 0) {
-        status('Fetching CSV appointment details...');
-        const fetchRes = await api('fetch_details', {
+      // Date range mode
+      if (selection.useDateRange) {
+        useDateRangeMode = true;
+        fromDateValue = selection.fromDate;
+        
+        status('Searching appointments by date range...');
+        const searchRes = await api('search_by_date_range', {
           org: orgInput.value.trim(),
           token,
-          appt_ids: selection.csvIds
+          from_date: selection.fromDate,
+          to_date: selection.toDate
         });
 
-        if (!fetchRes.success) {
-          return status('Failed to fetch CSV appointment details', 'error');
+        if (!searchRes.success) {
+          return status(searchRes.error || 'Failed to search appointments by date range', 'error');
         }
 
-        // Deduplicate by Appt-id
-        const existingIds = new Set(appointmentsToUpdate.map(a => a['Appt-id']));
-        for (const appt of (fetchRes.appointments || [])) {
-          if (!existingIds.has(appt['Appt-id'])) {
-            appointmentsToUpdate.push(appt);
-            existingIds.add(appt['Appt-id']);
+        if (!searchRes.appointments || searchRes.appointments.length === 0) {
+          return status(`No appointments found in date range ${selection.fromDate} to ${selection.toDate}`, 'error');
+        }
+
+        appointmentsToUpdate = searchRes.appointments;
+        status(`Found ${appointmentsToUpdate.length} appointments in date range`, 'success');
+      } else {
+        // Source selection mode
+        // First validate
+        status('Validating appointments...');
+        const validateRes = await api('validate', {
+          org: orgInput.value.trim(),
+          token,
+          useDefault: selection.useDefault,
+          csvIds: selection.csvIds,
+          additionalIds: selection.additionalIds,
+          new_date: newDate // Pass date for past-date validation
+        });
+
+        if (!validateRes.success) {
+          return status(validateRes.error || 'Validation failed', 'error');
+        }
+
+        // Get default appointments if needed
+        if (selection.useDefault) {
+          status('Fetching default appointments...');
+          const defaultRes = await api('get_default_appointments', {});
+          if (defaultRes.success && defaultRes.appointments) {
+            appointmentsToUpdate = defaultRes.appointments.slice(); // Copy array
           }
         }
-      }
 
-      // If we have additional IDs, fetch their details and combine
-      if (selection.additionalIds) {
-        const additionalIds = selection.additionalIds.split(/[,\s;]+/).filter(id => id.trim());
-        if (additionalIds.length > 0) {
-          status('Fetching additional appointment details...');
+        // If we have CSV IDs, fetch their details and combine
+        if (selection.csvIds && selection.csvIds.length > 0) {
+          status('Fetching CSV appointment details...');
           const fetchRes = await api('fetch_details', {
             org: orgInput.value.trim(),
             token,
-            appt_ids: additionalIds
+            appt_ids: selection.csvIds
           });
 
           if (!fetchRes.success) {
-            return status('Failed to fetch appointment details', 'error');
+            return status('Failed to fetch CSV appointment details', 'error');
           }
 
           // Deduplicate by Appt-id
@@ -1002,6 +1016,32 @@
             if (!existingIds.has(appt['Appt-id'])) {
               appointmentsToUpdate.push(appt);
               existingIds.add(appt['Appt-id']);
+            }
+          }
+        }
+
+        // If we have additional IDs, fetch their details and combine
+        if (selection.additionalIds) {
+          const additionalIds = selection.additionalIds.split(/[,\s;]+/).filter(id => id.trim());
+          if (additionalIds.length > 0) {
+            status('Fetching additional appointment details...');
+            const fetchRes = await api('fetch_details', {
+              org: orgInput.value.trim(),
+              token,
+              appt_ids: additionalIds
+            });
+
+            if (!fetchRes.success) {
+              return status('Failed to fetch appointment details', 'error');
+            }
+
+            // Deduplicate by Appt-id
+            const existingIds = new Set(appointmentsToUpdate.map(a => a['Appt-id']));
+            for (const appt of (fetchRes.appointments || [])) {
+              if (!existingIds.has(appt['Appt-id'])) {
+                appointmentsToUpdate.push(appt);
+                existingIds.add(appt['Appt-id']);
+              }
             }
           }
         }
@@ -1017,7 +1057,14 @@
       
       for (const appt of appointmentsToUpdate) {
         const apptTime = appt['Time'] || '00:00:00';
-        const newDateTimeStr = `${newDate}T${apptTime}`;
+        let calculatedDate = newDate;
+        
+        // If date range mode, calculate the new date based on offset
+        if (useDateRangeMode && fromDateValue) {
+          calculatedDate = calculateNewDateForAppointment(appt, fromDateValue, newDate);
+        }
+        
+        const newDateTimeStr = `${calculatedDate}T${apptTime}`;
         const newDateTime = new Date(newDateTimeStr);
         
         if (newDateTime < now) {
@@ -1057,11 +1104,17 @@
         progressLabel.textContent = `Updating ${apptId}...`;
         progressBar.style.width = `${((i + 1) / appointmentsToUpdate.length) * 100}%`;
 
+        // Calculate the new date for this appointment
+        let calculatedDate = newDate;
+        if (useDateRangeMode && fromDateValue) {
+          calculatedDate = calculateNewDateForAppointment(appt, fromDateValue, newDate);
+        }
+
         const updateRes = await api('update', {
           org: orgInput.value.trim(),
           token,
           appointments: [appt],
-          new_date: newDate
+          new_date: calculatedDate
         });
 
         if (updateRes.success && updateRes.results && updateRes.results.length > 0) {
