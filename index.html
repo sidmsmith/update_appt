@@ -496,6 +496,7 @@
     
     // Function to update filter type display
     function updateFilterTypeDisplay() {
+      if (!dateRangeInputs || !apptIdRangeInputs || !filterTypeDate) return;
       if (filterTypeDate.checked) {
         dateRangeInputs.style.display = 'block';
         apptIdRangeInputs.style.display = 'none';
