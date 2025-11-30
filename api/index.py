@@ -3,7 +3,7 @@ from flask import Flask, request, jsonify, send_from_directory
 import json
 import re
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import requests
 from requests.auth import HTTPBasicAuth
 import urllib3
@@ -208,8 +208,30 @@ def update_appointment(appt, new_date, base_headers, org):
     headers["selectedLocation"] = f"{org}-DM1"
 
     original_time = appt["Time"]
-    new_datetime = f"{new_date}T{original_time}"
+    new_datetime_str = f"{new_date}T{original_time}"
     appt_id = appt.get("Appt-id", "Unknown")
+    
+    # Ensure datetime is in the future to avoid "occurs in past" errors
+    # This handles timezone differences between client and server
+    try:
+        # Parse the datetime (assumes UTC or server local time)
+        dt = datetime.fromisoformat(new_datetime_str.replace('Z', ''))
+        now = datetime.utcnow()  # Use UTC for server time comparison
+        
+        # If the datetime is in the past (negative time_diff), add 1 hour to ensure it's in the future
+        # This accounts for timezone differences (e.g., EST vs UTC) - 1 hour should cover most cases
+        time_diff = (dt - now).total_seconds()
+        if time_diff < 0:  # In the past
+            dt = dt + timedelta(hours=1)
+            # Reconstruct datetime string
+            new_datetime = dt.strftime("%Y-%m-%dT%H:%M:%S")
+            print(f"[UPDATE] Datetime was in the past, added 1-hour buffer: {new_datetime_str} -> {new_datetime}")
+        else:
+            new_datetime = new_datetime_str
+    except Exception as e:
+        # If parsing fails, use original datetime
+        print(f"[UPDATE] Warning: Could not parse datetime {new_datetime_str}: {e}")
+        new_datetime = new_datetime_str
 
     # Only update dates - never include ASN, Carrier, or Trailer in payload
     # # Only update dates - conditionally include ASN, Carrier, and Trailer only if they have values
