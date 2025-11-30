@@ -568,22 +568,38 @@ def search_by_date_range():
                 if not (from_appt_id <= appt_id <= to_appt_id):
                     continue
             
-            appt_date = item.get("PreferredDateTime", "") or item.get("ArrivalDateTime", "")
-            if not appt_date:
+            # Extract time from PreferredDateTime or ArrivalDateTime (same logic as fetch_appointment_details)
+            datetime_str = item.get("PreferredDateTime", "") or item.get("ArrivalDateTime", "")
+            if not datetime_str:
                 continue
-                
+            
             # Extract date part (YYYY-MM-DD)
-            date_part = appt_date.split('T')[0] if 'T' in appt_date else appt_date.split(' ')[0]
-            time_part = appt_date.split('T')[1].split('.')[0] if 'T' in appt_date else (item.get("Time", "00:00:00") if "Time" in item else "00:00:00")
+            date_part = datetime_str.split('T')[0] if 'T' in datetime_str else datetime_str.split(' ')[0]
+            # Extract time part (HH:MM:SS)
+            time_part = ""
+            if datetime_str and "T" in datetime_str:
+                time_part = datetime_str.split("T")[1].split(".")[0]  # Extract HH:MM:SS
+            if not time_part:
+                time_part = "00:00:00"  # Default if not found
             
             # For date range, check if date is within range
             if filter_type == 'date':
                 if not (from_date <= date_part <= to_date):
                     continue
             
+            # Extract ASN from AppointmentContents or Asn (same logic as fetch_appointment_details)
+            asn_id = ""
+            appointment_contents = item.get("AppointmentContents", [])
+            if appointment_contents and len(appointment_contents) > 0:
+                asn_id = appointment_contents[0].get("Asn", "")
+            if not asn_id:
+                asn_list = item.get("Asn", [])
+                if asn_list and len(asn_list) > 0:
+                    asn_id = asn_list[0].get("AsnId", "")
+            
             appointments.append({
                 "Appt-id": appt_id,
-                "Asn-id": item.get("Asn", [{}])[0].get("AsnId", "") if item.get("Asn") else "",
+                "Asn-id": asn_id,
                 "Carrier-id": item.get("CarrierId", ""),
                 "Trailer-id": item.get("TrailerId", ""),
                 "Date": date_part,
