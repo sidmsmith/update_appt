@@ -1009,16 +1009,19 @@
         const now = new Date();
         const pastAppointments = [];
         
-        // For ApptId range, find the earliest appointment date to use as "from date"
-        let fromDateValue = selection.fromDate;
-        if (selection.filterType === 'apptId') {
-          if (searchRes.appointments.length > 0) {
-            // Find earliest date
-            const dates = searchRes.appointments.map(a => a['Date']).filter(d => d).sort();
-            if (dates.length > 0) {
-              fromDateValue = dates[0];
-            }
+        // Find the earliest appointment date from the results to use as anchor date
+        // This applies to both date range and ApptId range modes
+        let fromDateValue = null;
+        if (searchRes.appointments.length > 0) {
+          // Find earliest date from actual appointment results
+          const dates = searchRes.appointments.map(a => a['Date']).filter(d => d).sort();
+          if (dates.length > 0) {
+            fromDateValue = dates[0]; // Use earliest actual appointment date, not filter date
           }
+        }
+        
+        if (!fromDateValue) {
+          return status('Could not determine earliest appointment date', 'error');
         }
         
         for (const appt of searchRes.appointments) {
@@ -1135,13 +1138,12 @@
 
         appointmentsToUpdate = searchRes.appointments;
         
-        // For ApptId range, find the earliest appointment date to use as "from date"
-        if (selection.filterType === 'apptId') {
-          if (appointmentsToUpdate.length > 0) {
-            const dates = appointmentsToUpdate.map(a => a['Date']).filter(d => d).sort();
-            if (dates.length > 0) {
-              fromDateValue = dates[0];
-            }
+        // Find the earliest appointment date from the results to use as anchor date
+        // This applies to both date range and ApptId range modes
+        if (appointmentsToUpdate.length > 0) {
+          const dates = appointmentsToUpdate.map(a => a['Date']).filter(d => d).sort();
+          if (dates.length > 0) {
+            fromDateValue = dates[0]; // Use earliest actual appointment date, not filter date
           }
         }
         
