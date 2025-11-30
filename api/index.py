@@ -211,20 +211,36 @@ def update_appointment(appt, new_date, base_headers, org):
     new_datetime = f"{new_date}T{original_time}"
     appt_id = appt.get("Appt-id", "Unknown")
 
+    # Only update dates - conditionally include ASN, Carrier, and Trailer only if they have values
+    # Get values, convert to string, strip whitespace - only include in payload if non-empty
+    asn_id = str(appt.get("Asn-id", "")).strip()
+    carrier_id = str(appt.get("Carrier-id", "")).strip()
+    trailer_id = str(appt.get("Trailer-id", "")).strip()
+    
+    # Build base payload with required fields
     payload = {
         "AppointmentId": appt_id,
         "AppointmentTypeId": "DROP_UNLOAD",
-        "CarrierId": appt.get("Carrier-id", ""),
-        "TrailerId": appt.get("Trailer-id", ""),
         "UserLoadInformation": [],
         "EquipmentTypeId": "48FT",
         "PreferredDateTime": new_datetime,
         "ArrivalDateTime": new_datetime,
         "Duration": 60,
-        "AppointmentStatusId": "3000",
-        "AppointmentContents": [{"Asn": appt.get("Asn-id", "")}],
-        "Asn": [{"AsnId": appt.get("Asn-id", ""), "DestinationFacilityId": f"{org}-DM1"}]
+        "AppointmentStatusId": "3000"
     }
+    
+    # Only include Carrier if it has a value
+    if carrier_id:
+        payload["CarrierId"] = carrier_id
+    
+    # Only include Trailer if it has a value
+    if trailer_id:
+        payload["TrailerId"] = trailer_id
+    
+    # Only include ASN if it has a value
+    if asn_id:
+        payload["AppointmentContents"] = [{"Asn": asn_id}]
+        payload["Asn"] = [{"AsnId": asn_id, "DestinationFacilityId": f"{org}-DM1"}]
 
     # Detailed logging
     print("=" * 80)
