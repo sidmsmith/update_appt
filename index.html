@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Update Appointment Date v3.1.0</title>
+  <title>Update Appointment Date v3.1.1</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -209,7 +209,7 @@
 </head>
 <body>
   <div class="main-card">
-    <h2 class="text-center mb-4">Update Appointment Date v3.1.0</h2>
+    <h2 class="text-center mb-4">Update Appointment Date v3.1.1</h2>
 
     <!-- ORG -->
     <div class="mb-3">
@@ -291,7 +291,7 @@
                 </div>
                 <div>
                   <input type="radio" id="filterTypeApptId" name="filterType" value="apptId" />
-                  <label for="filterTypeApptId" style="display: inline; font-weight: normal; margin-left: 0.5rem;">ApptId Range</label>
+                  <label for="filterTypeApptId" style="display: inline; font-weight: normal; margin-left: 0.5rem;">Appointment Range</label>
                 </div>
               </div>
             </div>
@@ -315,15 +315,15 @@
             <div id="apptIdRangeInputs" style="display: none;">
               <div class="d-flex gap-3 align-items-center flex-wrap">
                 <div>
-                  <label class="form-label" style="font-size: 0.9em; margin-bottom: 0.25rem;">From ApptId:</label>
+                  <label class="form-label" style="font-size: 0.9em; margin-bottom: 0.25rem;">From Appointment:</label>
                   <input type="text" id="fromApptId" class="form-control" style="width: 180px;" placeholder="APPT001" />
                 </div>
                 <div>
-                  <label class="form-label" style="font-size: 0.9em; margin-bottom: 0.25rem;">To ApptId:</label>
+                  <label class="form-label" style="font-size: 0.9em; margin-bottom: 0.25rem;">To Appointment:</label>
                   <input type="text" id="toApptId" class="form-control" style="width: 180px;" placeholder="APPT100" />
                 </div>
               </div>
-              <small style="display: block; margin-top: 0.5rem; color: #999;">Appointments with ApptIds within this range will be selected and advanced by the number of days from the earliest appointment date to "New Date"</small>
+              <small style="display: block; margin-top: 0.5rem; color: #999;">Appointments within this range will be selected and advanced by the number of days from the earliest appointment date to "New Date"</small>
             </div>
           </div>
         </div>
@@ -390,8 +390,10 @@
     let startTime = null;
     let completedCount = 0;
 
-    // Set today as default date (always, never saved)
-    datePicker.valueAsDate = new Date();
+    // Set tomorrow as default date (always, never saved)
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    datePicker.valueAsDate = tomorrow;
     
     // Ensure ORG is always blank on load (security)
     orgInput.value = '';
@@ -502,8 +504,10 @@
     // Load preferences on page load
     loadPreferences();
     
-    // Always ensure date is today (even after preferences load)
-    datePicker.valueAsDate = new Date();
+    // Always ensure date is tomorrow (even after preferences load)
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    datePicker.valueAsDate = tomorrow;
 
     // STATUS
     function status(text, type = 'info') {
@@ -975,7 +979,7 @@
         } else {
           searchPayload.from_appt_id = selection.fromApptId;
           searchPayload.to_appt_id = selection.toApptId;
-          status('Searching appointments by ApptId range...');
+          status('Searching appointments by Appointment range...');
         }
         
         const searchRes = await api('search_by_date_range', searchPayload);
@@ -987,7 +991,7 @@
         if (!searchRes.appointments || searchRes.appointments.length === 0) {
           const rangeDesc = selection.filterType === 'date' 
             ? `date range ${selection.fromDate} to ${selection.toDate}`
-            : `ApptId range ${selection.fromApptId} to ${selection.toApptId}`;
+            : `Appointment range ${selection.fromApptId} to ${selection.toApptId}`;
           return status(`No appointments found in ${rangeDesc}`, 'error');
         }
 
@@ -1026,7 +1030,7 @@
           return status(`${pastIds}: ${pastAppointments.length} appointment(s) would occur in the past`, 'error');
         }
         
-        const rangeType = selection.filterType === 'date' ? 'date range' : 'ApptId range';
+        const rangeType = selection.filterType === 'date' ? 'date range' : 'Appointment range';
         return status(`Found ${searchRes.appointments.length} valid appointment(s) in ${rangeType}`, 'success');
       }
       
@@ -1103,7 +1107,7 @@
         } else {
           searchPayload.from_appt_id = selection.fromApptId;
           searchPayload.to_appt_id = selection.toApptId;
-          status('Searching appointments by ApptId range...');
+          status('Searching appointments by Appointment range...');
         }
         
         const searchRes = await api('search_by_date_range', searchPayload);
@@ -1115,7 +1119,7 @@
         if (!searchRes.appointments || searchRes.appointments.length === 0) {
           const rangeDesc = selection.filterType === 'date' 
             ? `date range ${selection.fromDate} to ${selection.toDate}`
-            : `ApptId range ${selection.fromApptId} to ${selection.toApptId}`;
+            : `Appointment range ${selection.fromApptId} to ${selection.toApptId}`;
           return status(`No appointments found in ${rangeDesc}`, 'error');
         }
 
@@ -1131,7 +1135,7 @@
           }
         }
         
-        const rangeType = selection.filterType === 'date' ? 'date range' : 'ApptId range';
+        const rangeType = selection.filterType === 'date' ? 'date range' : 'Appointment range';
         status(`Found ${appointmentsToUpdate.length} appointments in ${rangeType}`, 'success');
       } else {
         // Source selection mode
