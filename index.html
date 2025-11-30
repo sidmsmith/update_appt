@@ -1006,7 +1006,9 @@
         }
 
         // Validate dates won't be in the past
-        const now = new Date();
+        // Get today's date in YYYY-MM-DD format for comparison (avoid timezone issues)
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
         const pastAppointments = [];
         
         // Find the earliest appointment date from the results to use as anchor date
@@ -1025,15 +1027,13 @@
         }
         
         for (const appt of searchRes.appointments) {
-          const apptTime = appt['Time'] || '00:00:00';
           const calculatedDate = calculateNewDateForAppointment(appt, fromDateValue, newDate);
-          const newDateTimeStr = `${calculatedDate}T${apptTime}`;
-          const newDateTime = new Date(newDateTimeStr);
           
-          if (newDateTime < now) {
+          // Compare dates as strings (YYYY-MM-DD) to avoid timezone issues
+          if (calculatedDate < todayStr) {
             pastAppointments.push({
               id: appt['Appt-id'] || 'Unknown',
-              datetime: newDateTimeStr
+              datetime: calculatedDate
             });
           }
         }
@@ -1230,11 +1230,12 @@
       }
 
       // Validate that appointments won't be in the past
-      const now = new Date();
+      // Get today's date in YYYY-MM-DD format for comparison (avoid timezone issues)
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
       const pastAppointments = [];
       
       for (const appt of appointmentsToUpdate) {
-        const apptTime = appt['Time'] || '00:00:00';
         let calculatedDate = newDate;
         
         // If date range mode, calculate the new date based on offset
@@ -1242,14 +1243,11 @@
           calculatedDate = calculateNewDateForAppointment(appt, fromDateValue, newDate);
         }
         
-        const newDateTimeStr = `${calculatedDate}T${apptTime}`;
-        const newDateTime = new Date(newDateTimeStr);
-        
-        if (newDateTime < now) {
+        // Compare dates as strings (YYYY-MM-DD) to avoid timezone issues
+        if (calculatedDate < todayStr) {
           pastAppointments.push({
             id: appt['Appt-id'] || 'Unknown',
-            time: apptTime,
-            datetime: newDateTimeStr
+            datetime: calculatedDate
           });
         }
       }
