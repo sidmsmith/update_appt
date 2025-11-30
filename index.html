@@ -1068,13 +1068,34 @@
     };
 
     // Helper function to calculate date offset and apply to appointment
+    // Uses date-only arithmetic to avoid timezone issues with JavaScript Date objects
     function calculateNewDateForAppointment(appt, fromDate, newDate) {
       const apptDate = appt['Date'] || appt['PreferredDateTime']?.split('T')[0];
       if (!apptDate) return newDate; // Fallback to newDate if no date found
       
-      const fromDateObj = new Date(fromDate);
-      const newDateObj = new Date(newDate);
-      const apptDateObj = new Date(apptDate);
+      // Parse YYYY-MM-DD dates and extract components
+      function parseDate(dateStr) {
+        const parts = dateStr.split('-');
+        return {
+          year: parseInt(parts[0], 10),
+          month: parseInt(parts[1], 10) - 1, // JavaScript months are 0-indexed
+          day: parseInt(parts[2], 10)
+        };
+      }
+      
+      // Create Date objects using local time (not UTC) to avoid timezone issues
+      function createLocalDate(dateParts) {
+        return new Date(dateParts.year, dateParts.month, dateParts.day);
+      }
+      
+      const fromDateParts = parseDate(fromDate);
+      const newDateParts = parseDate(newDate);
+      const apptDateParts = parseDate(apptDate);
+      
+      // Create Date objects in local timezone
+      const fromDateObj = createLocalDate(fromDateParts);
+      const newDateObj = createLocalDate(newDateParts);
+      const apptDateObj = createLocalDate(apptDateParts);
       
       // Calculate offset in days
       const offsetDays = Math.round((newDateObj - fromDateObj) / (1000 * 60 * 60 * 24));
