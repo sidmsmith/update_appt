@@ -1333,12 +1333,14 @@
         new_dates_dict: new_dates_dict
       });
 
-      // Log the JSON response to console
+      // Log the raw JSON response to console
+      console.log('=== BULK IMPORT API RAW RESPONSE ===');
+      console.log(bulkRes);
       if (bulkRes.response) {
-        console.log('=== BULK IMPORT API RESPONSE ===');
+        console.log('\n=== BULK IMPORT API RESPONSE (formatted) ===');
         console.log(JSON.stringify(bulkRes.response, null, 2));
-        console.log('================================');
       }
+      console.log('====================================');
 
       // Hide stop button when finished
       if (stopBtn) stopBtn.style.display = 'none';
@@ -1347,13 +1349,31 @@
         status(`Bulk import completed for ${appointmentsToUpdate.length} appointments`, 'success');
         progressLabel.textContent = 'Done!';
         progressBar.style.width = '100%';
-        resultsText.value = `Bulk import completed successfully.\n\nAPI Response logged to console.`;
+        
+        // Display the raw JSON response in results textarea
+        let responseText = `Bulk import completed successfully.\n\n`;
+        responseText += `=== RAW JSON RESPONSE ===\n`;
+        responseText += JSON.stringify(bulkRes, null, 2);
+        if (bulkRes.response) {
+          responseText += `\n\n=== API RESPONSE (formatted) ===\n`;
+          responseText += JSON.stringify(bulkRes.response, null, 2);
+        }
+        resultsText.value = responseText;
         updateTimeLabel(appointmentsToUpdate.length, true);
       } else {
         status(`Bulk import failed: ${bulkRes.error || 'Unknown error'}`, 'error');
         progressLabel.textContent = 'Failed';
         progressBar.style.width = '100%';
-        resultsText.value = `Bulk import failed.\nError: ${bulkRes.error || 'Unknown error'}\n\nAPI Response logged to console.`;
+        
+        // Display the raw JSON response in results textarea
+        let responseText = `Bulk import failed.\nError: ${bulkRes.error || 'Unknown error'}\n\n`;
+        responseText += `=== RAW JSON RESPONSE ===\n`;
+        responseText += JSON.stringify(bulkRes, null, 2);
+        if (bulkRes.response) {
+          responseText += `\n\n=== API RESPONSE (formatted) ===\n`;
+          responseText += JSON.stringify(bulkRes.response, null, 2);
+        }
+        resultsText.value = responseText;
         updateTimeLabel(appointmentsToUpdate.length, true);
       }
     };
