@@ -671,6 +671,132 @@ def fetch_details():
     
     return jsonify({"success": True, "appointments": appointments})
 
+def build_bulk_import_payload(appointments, new_dates_dict, base_headers, org):
+    """Build bulk import payload with Data array containing all appointment updates"""
+    url = f"https://{API_HOST}/appointment/api/appointment/appointment/bulkImport"
+    headers = base_headers.copy()
+    headers["Content-Type"] = "application/json"
+    headers["selectedOrganization"] = org
+    headers["selectedLocation"] = f"{org}-DM1"
+    
+    data_array = []
+    
+    for appt in appointments:
+        appt_id = appt.get("Appt-id", "Unknown")
+        # Get the calculated date for this appointment (from new_dates_dict)
+        calculated_date = new_dates_dict.get(appt_id, new_dates_dict.get('default', ''))
+        
+        original_time = appt.get("Time", "00:00:00")
+        new_datetime_str = f"{calculated_date}T{original_time}"
+        
+        # Ensure datetime is in the future (same logic as update_appointment)
+        try:
+            dt = datetime.fromisoformat(new_datetime_str.replace('Z', ''))
+            now = datetime.utcnow()
+            time_diff = (dt - now).total_seconds()
+            if time_diff < 0:
+                dt = dt + timedelta(hours=1)
+                new_datetime = dt.strftime("%Y-%m-%dT%H:%M:%S")
+            else:
+                new_datetime = new_datetime_str
+        except Exception as e:
+            new_datetime = new_datetime_str
+        
+        # Build appointment payload (same structure as update_appointment)
+        appt_payload = {
+            "AppointmentId": appt_id,
+            "AppointmentTypeId": "DROP_UNLOAD",
+            "UserLoadInformation": [],
+            "EquipmentTypeId": "48FT",
+            "PreferredDateTime": new_datetime,
+            "ArrivalDateTime": new_datetime,
+            "Duration": 60,
+            "AppointmentStatusId": "3000"
+        }
+        
+        data_array.append(appt_payload)
+    
+    # Build the bulk import payload
+    bulk_payload = {
+        "Data": data_array
+    }
+    
+    return url, headers, bulk_payload
+
+@app.route('/api/bulk_import', methods=['POST'])
+def bulk_import():
+    """Bulk import endpoint that sends all appointments in one API call"""
+    request_data = request.json
+    org = request_data.get('org')
+    token = request_data.get('token')
+    appointments = request_data.get('appointments', [])
+    new_dates_dict = request_data.get('new_dates_dict', {})  # Dict mapping appt_id -> calculated_date
+    
+    print("=" * 80)
+    print("[BULK IMPORT ENDPOINT] Received Request")
+    print("=" * 80)
+    print(f"[BULK IMPORT ENDPOINT] org: {org}")
+    print(f"[BULK IMPORT ENDPOINT] Number of appointments: {len(appointments)}")
+    print(f"[BULK IMPORT ENDPOINT] Appointment IDs: {[appt.get('Appt-id', 'Unknown') for appt in appointments]}")
+    print("-" * 80)
+    
+    if not all([org, token, appointments]):
+        print("[BULK IMPORT ENDPOINT] ERROR: Missing required data")
+        print("=" * 80)
+        return jsonify({"success": False, "error": "Missing data"})
+    
+    base_headers = {"Authorization": f"Bearer {token}"}
+    
+    # Build bulk import payload
+    url, headers, bulk_payload = build_bulk_import_payload(appointments, new_dates_dict, base_headers, org)
+    
+    print(f"[BULK IMPORT ENDPOINT] URL: {url}")
+    print(f"[BULK IMPORT ENDPOINT] Payload structure: {{ 'Data': [{len(bulk_payload['Data'])} appointments] }}")
+    print("-" * 80)
+    
+    try:
+        r = requests.post(url, json=bulk_payload, headers=headers, timeout=60, verify=False)
+        
+        print(f"[BULK IMPORT ENDPOINT] Response Status: {r.status_code}")
+        r.raise_for_status()
+        response_json = r.json()
+        
+        print(f"[BULK IMPORT ENDPOINT] Raw JSON Response:")
+        print(json.dumps(response_json, indent=2))
+        print("=" * 80)
+        
+        return jsonify({
+            "success": True,
+            "response": response_json
+        })
+    except requests.exceptions.HTTPError as e:
+        print(f"[BULK IMPORT ENDPOINT] HTTP Error: {e}")
+        error_message = str(e)
+        
+        if hasattr(e, 'response') and e.response is not None:
+            print(f"[BULK IMPORT ENDPOINT] Response Status: {e.response.status_code}")
+            try:
+                error_response = e.response.json()
+                print(f"[BULK IMPORT ENDPOINT] Error Response JSON:")
+                print(json.dumps(error_response, indent=2))
+                error_message = error_response.get('message', str(e))
+            except:
+                error_message = e.response.text or str(e)
+        
+        print("=" * 80)
+        return jsonify({
+            "success": False,
+            "error": error_message,
+            "response": error_response if 'error_response' in locals() else None
+        }), 400
+    except Exception as e:
+        print(f"[BULK IMPORT ENDPOINT] Unexpected Error: {e}")
+        print("=" * 80)
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
 @app.route('/api/update', methods=['POST'])
 def update():
     request_data = request.json

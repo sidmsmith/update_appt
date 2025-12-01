@@ -1306,67 +1306,56 @@
       startTime = Date.now();
       completedCount = 0;
 
-      // Update appointments one by one for real-time feedback
-      const results = [];
-      let successCount = 0;
+      // Use bulk import API to send all appointments in one shot
+      progressLabel.textContent = 'Preparing bulk import...';
+      progressBar.style.width = '10%';
 
-      for (let i = 0; i < appointmentsToUpdate.length; i++) {
-        // Check if user requested abort
-        if (abortUpdate) {
-          status(`Update aborted by user. Processed ${i} of ${appointmentsToUpdate.length} appointments.`, 'error');
-          progressLabel.textContent = 'Aborted';
-          if (stopBtn) stopBtn.style.display = 'none';
-          return;
-        }
-
-        const appt = appointmentsToUpdate[i];
+      // Build new_dates_dict mapping appointment IDs to their calculated dates
+      const new_dates_dict = {};
+      for (const appt of appointmentsToUpdate) {
         const apptId = appt['Appt-id'] || 'Unknown';
-        
-        progressLabel.textContent = `Updating ${apptId}...`;
-        progressBar.style.width = `${((i + 1) / appointmentsToUpdate.length) * 100}%`;
-
-        // Calculate the new date for this appointment
         let calculatedDate = newDate;
         if (useDateRangeMode && fromDateValue) {
           calculatedDate = calculateNewDateForAppointment(appt, fromDateValue, newDate);
         }
+        new_dates_dict[apptId] = calculatedDate;
+      }
+      // Also include default date for any appointments that might not have a specific date
+      new_dates_dict['default'] = newDate;
 
-        const updateRes = await api('update', {
-          org: orgInput.value.trim(),
-          token,
-          appointments: [appt],
-          new_date: calculatedDate
-        });
+      progressLabel.textContent = `Sending ${appointmentsToUpdate.length} appointments via bulk import...`;
+      progressBar.style.width = '50%';
 
-        if (updateRes.success && updateRes.results && updateRes.results.length > 0) {
-          const result = updateRes.results[0];
-          let line;
-          if (result.success) {
-            line = `${result.appt_id}: Success`;
-          } else {
-            // Format error message as "APPT4259: Failed: Appointment Occurs in Past"
-            const errorMsg = result.message || result.error || 'Unknown error';
-            line = `${result.appt_id}: Failed: ${errorMsg}`;
-          }
-          results.push(line);
-          resultsText.value += (resultsText.value ? '\n' : '') + line;
-          resultsText.scrollTop = resultsText.scrollHeight;
-          if (result.success) successCount++;
-        }
+      const bulkRes = await api('bulk_import', {
+        org: orgInput.value.trim(),
+        token,
+        appointments: appointmentsToUpdate,
+        new_dates_dict: new_dates_dict
+      });
 
-        completedCount = i + 1;
-        updateTimeLabel(appointmentsToUpdate.length);
+      // Log the JSON response to console
+      if (bulkRes.response) {
+        console.log('=== BULK IMPORT API RESPONSE ===');
+        console.log(JSON.stringify(bulkRes.response, null, 2));
+        console.log('================================');
       }
 
       // Hide stop button when finished
       if (stopBtn) stopBtn.style.display = 'none';
 
-      const failCount = appointmentsToUpdate.length - successCount;
-      const finalMsg = `Finished: ${appointmentsToUpdate.length} appointments. ${successCount} passed, ${failCount} failed`;
-      status(finalMsg, 'success');
-      progressLabel.textContent = 'Done!';
-      progressBar.style.width = '100%';
-      updateTimeLabel(appointmentsToUpdate.length, true);
+      if (bulkRes.success) {
+        status(`Bulk import completed for ${appointmentsToUpdate.length} appointments`, 'success');
+        progressLabel.textContent = 'Done!';
+        progressBar.style.width = '100%';
+        resultsText.value = `Bulk import completed successfully.\n\nAPI Response logged to console.`;
+        updateTimeLabel(appointmentsToUpdate.length, true);
+      } else {
+        status(`Bulk import failed: ${bulkRes.error || 'Unknown error'}`, 'error');
+        progressLabel.textContent = 'Failed';
+        progressBar.style.width = '100%';
+        resultsText.value = `Bulk import failed.\nError: ${bulkRes.error || 'Unknown error'}\n\nAPI Response logged to console.`;
+        updateTimeLabel(appointmentsToUpdate.length, true);
+      }
     };
 
     function updateTimeLabel(total, final = false) {
