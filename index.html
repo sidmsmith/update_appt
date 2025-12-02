@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Update Appointment Date v3.1.1</title>
+  <title>Update Appointment Date v3.2.1</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
@@ -19,6 +20,36 @@
       --blue-select: #339af0;
       --success: #28a745;
       --primary: #0d6efd;
+    }
+    
+    /* Dark theme (existing theme) */
+    :root.theme-dark {
+      --bg-dark: #121212;
+      --card-bg: #1e1e1e;
+      --input-bg: #2d2d2d;
+      --border: #333;
+      --text: #e0e0e0;
+      --red-bg: #4a1a1a;
+      --red-text: #ff6b6b;
+      --blue-select: #339af0;
+      --success: #28a745;
+      --primary: #0d6efd;
+    }
+    
+    /* Manhattan theme */
+    :root.theme-manhattan {
+      --bg-dark: rgb(45, 47, 59);
+      --card-bg: #484e5e;
+      --input-bg: #282c34;
+      --border: #333;
+      --text: #495057;
+      --red-bg: #4a1a1a;
+      --red-text: #ff6b6b;
+      --blue-select: #339af0;
+      --success: hsl(142.1 76.2% 36.3%);
+      --primary: #3B82F6;
+      --secondary: #6c757d;
+      --shadow: 0 4px 12px rgba(0,0,0,0.3);
     }
 
     body { 
@@ -205,11 +236,64 @@
       border-color: var(--primary);
       color: #fff;
     }
+
+    /* THEME SELECTOR BUTTON */
+    .theme-selector-btn {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: none;
+      border: none;
+      color: #ffffff !important; /* Always white */
+      padding: 0.5rem;
+      cursor: pointer;
+      font-size: 1.5rem;
+      z-index: 1000;
+      transition: opacity 0.2s;
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
+    .theme-selector-btn:hover {
+      opacity: 0.7;
+    }
+    
+    /* Modal styling */
+    .modal-content {
+      background: var(--card-bg) !important;
+      border: 1px solid var(--border) !important;
+      color: var(--text) !important;
+    }
+    .modal-header {
+      border-bottom: 1px solid var(--border) !important;
+      background: var(--card-bg) !important;
+    }
+    .modal-header .modal-title {
+      color: var(--text) !important;
+    }
+    .modal-body {
+      background: var(--card-bg) !important;
+    }
+    .list-group-item {
+      background: var(--input-bg) !important;
+      border-color: var(--border) !important;
+      color: var(--text) !important;
+    }
+    .list-group-item:hover {
+      background: var(--card-bg) !important;
+    }
+    .list-group-item.active {
+      background: var(--primary) !important;
+      border-color: var(--primary) !important;
+    }
   </style>
 </head>
 <body>
-  <div class="main-card">
-    <h2 class="text-center mb-4">Update Appointment Date v3.1.1</h2>
+  <div class="main-card" style="position: relative;">
+    <button class="theme-selector-btn" id="themeSelectorBtn" title="Select Theme">
+      <i class="fas fa-cog"></i>
+    </button>
+    <h2 class="text-center mb-4">Update Appointment Date v3.2.1</h2>
 
     <!-- ORG -->
     <div class="mb-3">
@@ -351,6 +435,21 @@
       <div class="mb-3">
         <label class="form-label">Results:</label>
         <textarea id="resultsText" class="form-control" readonly></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- THEME SELECTOR MODAL -->
+  <div class="modal fade" id="themeModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Select Theme</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="list-group" id="themeList"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -1416,6 +1515,101 @@
 
         timeLabel.textContent = `Elapsed: ${elapsedStr} | Remaining: ~${remainingStr} (avg ${avgPer.toFixed(1)}s/call)`;
       }
+    }
+
+    // ===== THEME SYSTEM =====
+    const THEME_STORAGE_KEY = 'update_appt_theme';
+    const themeSelectorBtn = document.getElementById('themeSelectorBtn');
+    const themeModal = new bootstrap.Modal(document.getElementById('themeModal'));
+    const themeList = document.getElementById('themeList');
+    
+    const themes = {
+      dark: {
+        name: 'Dark',
+        rootClass: 'theme-dark'
+      },
+      manhattan: {
+        name: 'Manhattan',
+        rootClass: 'theme-manhattan'
+      }
+    };
+    
+    // Load saved theme or default to dark
+    function loadTheme() {
+      const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) || 'dark';
+      applyTheme(savedTheme);
+    }
+    
+    // Apply theme
+    function applyTheme(themeName) {
+      const root = document.documentElement;
+      const theme = themes[themeName] || themes.dark;
+      
+      // Remove all theme classes
+      Object.values(themes).forEach(t => {
+        if (t.rootClass) {
+          root.classList.remove(t.rootClass);
+        }
+      });
+      
+      // Apply selected theme
+      if (theme.rootClass) {
+        root.classList.add(theme.rootClass);
+      }
+      
+      // Save to localStorage
+      localStorage.setItem(THEME_STORAGE_KEY, themeName);
+    }
+    
+    // Render theme list in modal
+    function renderThemeList() {
+      themeList.innerHTML = '';
+      const currentTheme = localStorage.getItem(THEME_STORAGE_KEY) || 'dark';
+      
+      Object.entries(themes).forEach(([key, theme]) => {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = `list-group-item list-group-item-action ${key === currentTheme ? 'active' : ''}`;
+        item.textContent = theme.name;
+        item.onclick = () => {
+          applyTheme(key);
+          themeModal.hide();
+        };
+        themeList.appendChild(item);
+      });
+    }
+    
+    // Theme selector button click handler
+    if (themeSelectorBtn) {
+      themeSelectorBtn.onclick = () => {
+        renderThemeList();
+        themeModal.show();
+      };
+      
+      // Ensure button is always visible after theme changes
+      const observer = new MutationObserver(() => {
+        if (themeSelectorBtn) {
+          themeSelectorBtn.style.display = 'block';
+          themeSelectorBtn.style.visibility = 'visible';
+        }
+      });
+      
+      // Observe theme class changes on root element
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class']
+      });
+    }
+    
+    // Load theme on page load
+    loadTheme();
+    
+    // Ensure gear icon is visible after theme loads
+    if (themeSelectorBtn) {
+      setTimeout(() => {
+        themeSelectorBtn.style.display = 'block';
+        themeSelectorBtn.style.visibility = 'visible';
+      }, 100);
     }
   </script>
 </body>
