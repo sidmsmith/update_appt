@@ -1067,6 +1067,15 @@
     // Validate
     validateBtn.onclick = async () => {
       if (!token) return status('Authenticate first', 'error');
+      
+      // Track validate attempt in Statsig
+      if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+        window.StatsigTracking.logEvent('validate_appointments_attempt', {
+          org: orgInput.value.trim() || 'unknown',
+          timestamp: new Date().toISOString()
+        });
+      }
+      
       const selection = await collectAppointmentInputs();
       if (!selection) return;
 
@@ -1161,8 +1170,26 @@
       });
 
       if (!res.success) {
+        // Track validate failure in Statsig
+        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+          window.StatsigTracking.logEvent('validate_appointments_failed', {
+            org: orgInput.value.trim() || 'unknown',
+            error: res.error || 'Validation failed',
+            timestamp: new Date().toISOString()
+          });
+        }
         return status(res.error || 'Validation failed', 'error');
       }
+      
+      // Track validate success in Statsig
+      if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+        window.StatsigTracking.logEvent('validate_appointments_completed', {
+          org: orgInput.value.trim() || 'unknown',
+          message: res.message || 'All appointments valid',
+          timestamp: new Date().toISOString()
+        });
+      }
+      
       status(res.message || 'All appointments valid', 'success');
     };
 
@@ -1225,6 +1252,15 @@
       if (!token) return status('Authenticate first', 'error');
       const newDate = datePicker.value;
       if (!newDate) return status('Select a date', 'error');
+
+      // Track update attempt in Statsig
+      if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+        window.StatsigTracking.logEvent('update_appointments_attempt', {
+          org: orgInput.value.trim() || 'unknown',
+          new_date: newDate,
+          timestamp: new Date().toISOString()
+        });
+      }
 
       const selection = await collectAppointmentInputs();
       if (!selection) return;
@@ -1449,6 +1485,16 @@
         progressLabel.textContent = 'Done!';
         progressBar.style.width = '100%';
         
+        // Track update success in Statsig
+        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+          window.StatsigTracking.logEvent('update_appointments_completed', {
+            org: orgInput.value.trim() || 'unknown',
+            appointments_count: String(appointmentsToUpdate.length),
+            new_date: newDate,
+            timestamp: new Date().toISOString()
+          });
+        }
+        
         // Display the raw JSON response in results textarea
         let responseText = `Bulk import completed successfully.\n\n`;
         responseText += `=== RAW JSON RESPONSE ===\n`;
@@ -1463,6 +1509,17 @@
         status(`Bulk import failed: ${bulkRes.error || 'Unknown error'}`, 'error');
         progressLabel.textContent = 'Failed';
         progressBar.style.width = '100%';
+        
+        // Track update failure in Statsig
+        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+          window.StatsigTracking.logEvent('update_appointments_failed', {
+            org: orgInput.value.trim() || 'unknown',
+            appointments_count: String(appointmentsToUpdate.length),
+            new_date: newDate,
+            error: bulkRes.error || 'Unknown error',
+            timestamp: new Date().toISOString()
+          });
+        }
         
         // Display the raw JSON response in results textarea
         let responseText = `Bulk import failed.\nError: ${bulkRes.error || 'Unknown error'}\n\n`;
@@ -1611,6 +1668,20 @@
         themeSelectorBtn.style.visibility = 'visible';
       }, 100);
     }
+  </script>
+  <!-- Statsig Analytics -->
+  <script src="statsig.js"></script>
+  <!-- Vercel Analytics -->
+  <script>
+    (function() {
+      const script = document.createElement('script');
+      script.src = '/_vercel/insights/script.js';
+      script.defer = true;
+      script.onerror = function() {
+        console.warn('Vercel Analytics script failed to load. Make sure Analytics is enabled in Vercel dashboard and the app is redeployed.');
+      };
+      document.head.appendChild(script);
+    })();
   </script>
 </body>
 </html>
