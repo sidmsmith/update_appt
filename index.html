@@ -1295,9 +1295,27 @@
           status('Searching appointments by Appointment range...');
         }
         
+        // Track search attempt in Statsig
+        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+          window.StatsigTracking.logEvent('search_appointments_attempt', {
+            org: orgInput.value.trim() || 'unknown',
+            filter_type: selection.filterType,
+            timestamp: new Date().toISOString()
+          });
+        }
+        
         const searchRes = await api('search_by_date_range', searchPayload);
 
         if (!searchRes.success) {
+          // Track search failure in Statsig
+          if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+            window.StatsigTracking.logEvent('search_appointments_failed', {
+              org: orgInput.value.trim() || 'unknown',
+              filter_type: selection.filterType,
+              error: searchRes.error || 'Failed to search appointments',
+              timestamp: new Date().toISOString()
+            });
+          }
           return status(searchRes.error || 'Failed to search appointments', 'error');
         }
 
@@ -1305,7 +1323,28 @@
           const rangeDesc = selection.filterType === 'date' 
             ? `date range ${selection.fromDate} to ${selection.toDate}`
             : `Appointment range ${selection.fromApptId} to ${selection.toApptId}`;
+          
+          // Track search success but no results in Statsig
+          if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+            window.StatsigTracking.logEvent('search_appointments_completed', {
+              org: orgInput.value.trim() || 'unknown',
+              filter_type: selection.filterType,
+              appointments_count: '0',
+              timestamp: new Date().toISOString()
+            });
+          }
+          
           return status(`No appointments found in ${rangeDesc}`, 'error');
+        }
+        
+        // Track search success in Statsig
+        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
+          window.StatsigTracking.logEvent('search_appointments_completed', {
+            org: orgInput.value.trim() || 'unknown',
+            filter_type: selection.filterType,
+            appointments_count: String(searchRes.appointments.length),
+            timestamp: new Date().toISOString()
+          });
         }
 
         appointmentsToUpdate = searchRes.appointments;
