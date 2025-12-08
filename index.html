@@ -633,9 +633,142 @@
       }).then(r => r.json());
     }
 
+    // ===== GENERIC METADATA COLLECTION (Reusable across all apps) =====
+    function getCommonMetadata(additionalMetadata = {}) {
+      const now = Date.now();
+      const pageLoadTime = window._pageLoadTime || now;
+      const timeOnPage = Math.floor((now - pageLoadTime) / 1000);
+      
+      // Parse user agent
+      const ua = navigator.userAgent;
+      const browserInfo = parseUserAgent(ua);
+      
+      // Get screen info
+      const screenWidth = window.screen.width;
+      const screenHeight = window.screen.height;
+      const screenResolution = `${screenWidth}x${screenHeight}`;
+      
+      // Get URL parameters
+      const urlParamsObj = {};
+      const currentUrlParams = new URLSearchParams(window.location.search);
+      for (const [key, value] of currentUrlParams.entries()) {
+        urlParamsObj[key] = value;
+      }
+      
+      // Build common metadata
+      const commonMetadata = {
+        // User/Browser Information
+        user_agent: ua,
+        browser_name: browserInfo.name,
+        browser_version: browserInfo.version,
+        device_type: getDeviceType(),
+        os_name: browserInfo.os,
+        os_version: browserInfo.osVersion,
+        screen_resolution: screenResolution,
+        screen_width: screenWidth,
+        screen_height: screenHeight,
+        
+        // Session Information
+        session_id: getSessionId(),
+        time_on_page_seconds: timeOnPage,
+        page_url: window.location.href,
+        page_path: window.location.pathname,
+        
+        // URL Parameters
+        url_params: urlParamsObj,
+        has_url_params: Object.keys(urlParamsObj).length > 0,
+        
+        // App State
+        referrer: document.referrer || null,
+        timestamp: new Date().toISOString()
+      };
+      
+      return { ...commonMetadata, ...additionalMetadata };
+    }
+    
+    function parseUserAgent(ua) {
+      let name = 'Unknown';
+      let version = 'Unknown';
+      let os = 'Unknown';
+      let osVersion = 'Unknown';
+      
+      // Browser detection
+      if (ua.includes('Chrome') && !ua.includes('Edg')) {
+        const match = ua.match(/Chrome\/([\d.]+)/);
+        if (match) { name = 'Chrome'; version = match[1]; }
+      } else if (ua.includes('Firefox')) {
+        const match = ua.match(/Firefox\/([\d.]+)/);
+        if (match) { name = 'Firefox'; version = match[1]; }
+      } else if (ua.includes('Safari') && !ua.includes('Chrome')) {
+        const match = ua.match(/Version\/([\d.]+)/);
+        if (match) { name = 'Safari'; version = match[1]; }
+      } else if (ua.includes('Edg')) {
+        const match = ua.match(/Edg\/([\d.]+)/);
+        if (match) { name = 'Edge'; version = match[1]; }
+      }
+      
+      // OS detection
+      if (ua.includes('Windows NT')) {
+        const match = ua.match(/Windows NT ([\d.]+)/);
+        os = 'Windows';
+        if (match) {
+          const ntVersion = match[1];
+          const versionMap = { '10.0': '10/11', '6.3': '8.1', '6.2': '8', '6.1': '7' };
+          osVersion = versionMap[ntVersion] || ntVersion;
+        }
+      } else if (ua.includes('Mac OS X')) {
+        const match = ua.match(/Mac OS X ([\d_]+)/);
+        os = 'macOS';
+        if (match) osVersion = match[1].replace(/_/g, '.');
+      } else if (ua.includes('Android')) {
+        const match = ua.match(/Android ([\d.]+)/);
+        os = 'Android';
+        if (match) osVersion = match[1];
+      } else if (ua.includes('iPhone') || ua.includes('iPad')) {
+        const match = ua.match(/OS ([\d_]+)/);
+        os = 'iOS';
+        if (match) osVersion = match[1].replace(/_/g, '.');
+      }
+      
+      return { name, version, os, osVersion };
+    }
+    
+    function getDeviceType() {
+      const ua = navigator.userAgent;
+      if (/tablet|ipad|playbook|silk/i.test(ua)) return 'tablet';
+      if (/mobile|iphone|ipod|android|blackberry|opera|mini|windows\sce|palm|smartphone|iemobile/i.test(ua)) return 'mobile';
+      return 'desktop';
+    }
+    
+    function getSessionId() {
+      if (!window._sessionId) {
+        window._sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substring(2, 15);
+      }
+      return window._sessionId;
+    }
+    
+    // Home Assistant tracking helper
+    async function trackEvent(eventName, metadata = {}) {
+      try {
+        await fetch('/api/ha-track', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event_name: eventName,
+            metadata: getCommonMetadata(metadata)
+          })
+        });
+      } catch (error) {
+        // Silently fail - don't interrupt user experience
+      }
+    }
+
+    // Initialize page load time
+    window._pageLoadTime = Date.now();
+
     // App opened + Focus ORG
-    window.addEventListener('load', () => {
-      api('app_opened', { org: '' });
+    window.addEventListener('load', async () => {
+      await trackEvent('app_opened', {});
       orgInput.focus();
     });
 
@@ -1068,13 +1201,10 @@
     validateBtn.onclick = async () => {
       if (!token) return status('Authenticate first', 'error');
       
-      // Track validate attempt in Statsig
-      if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
-        window.StatsigTracking.logEvent('validate_appointments_attempt', {
-          org: orgInput.value.trim() || 'unknown',
-          timestamp: new Date().toISOString()
-        });
-      }
+      // Track validate attempt
+      await trackEvent('validate_appointments_attempt', {
+        org: orgInput.value.trim() || 'unknown'
+      });
       
       const selection = await collectAppointmentInputs();
       if (!selection) return;
@@ -1170,25 +1300,19 @@
       });
 
       if (!res.success) {
-        // Track validate failure in Statsig
-        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
-          window.StatsigTracking.logEvent('validate_appointments_failed', {
-            org: orgInput.value.trim() || 'unknown',
-            error: res.error || 'Validation failed',
-            timestamp: new Date().toISOString()
-          });
-        }
+        // Track validate failure
+        await trackEvent('validate_appointments_failed', {
+          org: orgInput.value.trim() || 'unknown',
+          error: res.error || 'Validation failed'
+        });
         return status(res.error || 'Validation failed', 'error');
       }
       
-      // Track validate success in Statsig
-      if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
-        window.StatsigTracking.logEvent('validate_appointments_completed', {
-          org: orgInput.value.trim() || 'unknown',
-          message: res.message || 'All appointments valid',
-          timestamp: new Date().toISOString()
-        });
-      }
+      // Track validate success
+      await trackEvent('validate_appointments_completed', {
+        org: orgInput.value.trim() || 'unknown',
+        message: res.message || 'All appointments valid'
+      });
       
       status(res.message || 'All appointments valid', 'success');
     };
@@ -1253,14 +1377,11 @@
       const newDate = datePicker.value;
       if (!newDate) return status('Select a date', 'error');
 
-      // Track update attempt in Statsig
-      if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
-        window.StatsigTracking.logEvent('update_appointments_attempt', {
-          org: orgInput.value.trim() || 'unknown',
-          new_date: newDate,
-          timestamp: new Date().toISOString()
-        });
-      }
+      // Track update attempt
+      await trackEvent('update_appointments_attempt', {
+        org: orgInput.value.trim() || 'unknown',
+        new_date: newDate
+      });
 
       const selection = await collectAppointmentInputs();
       if (!selection) return;
@@ -1295,27 +1416,21 @@
           status('Searching appointments by Appointment range...');
         }
         
-        // Track search attempt in Statsig
-        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
-          window.StatsigTracking.logEvent('search_appointments_attempt', {
-            org: orgInput.value.trim() || 'unknown',
-            filter_type: selection.filterType,
-            timestamp: new Date().toISOString()
-          });
-        }
+        // Track search attempt
+        await trackEvent('search_appointments_attempt', {
+          org: orgInput.value.trim() || 'unknown',
+          filter_type: selection.filterType
+        });
         
         const searchRes = await api('search_by_date_range', searchPayload);
 
         if (!searchRes.success) {
-          // Track search failure in Statsig
-          if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
-            window.StatsigTracking.logEvent('search_appointments_failed', {
-              org: orgInput.value.trim() || 'unknown',
-              filter_type: selection.filterType,
-              error: searchRes.error || 'Failed to search appointments',
-              timestamp: new Date().toISOString()
-            });
-          }
+          // Track search failure
+          await trackEvent('search_appointments_failed', {
+            org: orgInput.value.trim() || 'unknown',
+            filter_type: selection.filterType,
+            error: searchRes.error || 'Failed to search appointments'
+          });
           return status(searchRes.error || 'Failed to search appointments', 'error');
         }
 
@@ -1324,28 +1439,22 @@
             ? `date range ${selection.fromDate} to ${selection.toDate}`
             : `Appointment range ${selection.fromApptId} to ${selection.toApptId}`;
           
-          // Track search success but no results in Statsig
-          if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
-            window.StatsigTracking.logEvent('search_appointments_completed', {
-              org: orgInput.value.trim() || 'unknown',
-              filter_type: selection.filterType,
-              appointments_count: '0',
-              timestamp: new Date().toISOString()
-            });
-          }
+          // Track search success but no results
+          await trackEvent('search_appointments_completed', {
+            org: orgInput.value.trim() || 'unknown',
+            filter_type: selection.filterType,
+            appointments_count: '0'
+          });
           
           return status(`No appointments found in ${rangeDesc}`, 'error');
         }
         
-        // Track search success in Statsig
-        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
-          window.StatsigTracking.logEvent('search_appointments_completed', {
-            org: orgInput.value.trim() || 'unknown',
-            filter_type: selection.filterType,
-            appointments_count: String(searchRes.appointments.length),
-            timestamp: new Date().toISOString()
-          });
-        }
+        // Track search success
+        await trackEvent('search_appointments_completed', {
+          org: orgInput.value.trim() || 'unknown',
+          filter_type: selection.filterType,
+          appointments_count: String(searchRes.appointments.length)
+        });
 
         appointmentsToUpdate = searchRes.appointments;
         
@@ -1524,15 +1633,12 @@
         progressLabel.textContent = 'Done!';
         progressBar.style.width = '100%';
         
-        // Track update success in Statsig
-        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
-          window.StatsigTracking.logEvent('update_appointments_completed', {
-            org: orgInput.value.trim() || 'unknown',
-            appointments_count: String(appointmentsToUpdate.length),
-            new_date: newDate,
-            timestamp: new Date().toISOString()
-          });
-        }
+        // Track update success
+        await trackEvent('update_appointments_completed', {
+          org: orgInput.value.trim() || 'unknown',
+          appointments_count: String(appointmentsToUpdate.length),
+          new_date: newDate
+        });
         
         // Display the raw JSON response in results textarea
         let responseText = `Bulk import completed successfully.\n\n`;
@@ -1549,16 +1655,13 @@
         progressLabel.textContent = 'Failed';
         progressBar.style.width = '100%';
         
-        // Track update failure in Statsig
-        if (window.StatsigTracking && window.StatsigTracking.isInitialized()) {
-          window.StatsigTracking.logEvent('update_appointments_failed', {
-            org: orgInput.value.trim() || 'unknown',
-            appointments_count: String(appointmentsToUpdate.length),
-            new_date: newDate,
-            error: bulkRes.error || 'Unknown error',
-            timestamp: new Date().toISOString()
-          });
-        }
+        // Track update failure
+        await trackEvent('update_appointments_failed', {
+          org: orgInput.value.trim() || 'unknown',
+          appointments_count: String(appointmentsToUpdate.length),
+          new_date: newDate,
+          error: bulkRes.error || 'Unknown error'
+        });
         
         // Display the raw JSON response in results textarea
         let responseText = `Bulk import failed.\nError: ${bulkRes.error || 'Unknown error'}\n\n`;
@@ -1708,8 +1811,6 @@
       }, 100);
     }
   </script>
-  <!-- Statsig Analytics -->
-  <script src="statsig.js"></script>
   <!-- Vercel Analytics -->
   <script>
     (function() {
