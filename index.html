@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Update Appointment Date v3.2.2</title>
+  <title>Update Appointment Date v3.2.3</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -293,7 +293,7 @@
     <button class="theme-selector-btn" id="themeSelectorBtn" title="Select Theme">
       <i class="fas fa-cog"></i>
     </button>
-    <h2 class="text-center mb-4">Update Appointment Date v3.2.2</h2>
+    <h2 class="text-center mb-4">Update Appointment Date <span style="font-size: 0.7em; color: #999;">v3.2.3</span></h2>
 
     <!-- ORG -->
     <div class="mb-3">
@@ -1679,73 +1679,113 @@
       // }
 
       // Using single API calls (one per appointment) - appointments are displayed in calendar
-      progressLabel.textContent = `Updating ${appointmentsToUpdate.length} appointments (one at a time)...`;
-      progressBar.style.width = '10%';
-
-      const updateRes = await api('update', {
-        org: orgInput.value.trim(),
-        token,
-        appointments: appointmentsToUpdate,
-        new_date: newDate
-      });
-
-      // Log the raw JSON response to console
-      console.log('=== UPDATE API RAW RESPONSE ===');
-      console.log(updateRes);
-      console.log('====================================');
-
+      // Loop through appointments and update each one individually for real-time progress
+      const total = appointmentsToUpdate.length;
+      let successCount = 0;
+      let failCount = 0;
+      let resultsTextContent = `Starting update of ${total} appointments...\n\n`;
+      resultsText.value = resultsTextContent;
+      
+      for (let idx = 0; idx < total; idx++) {
+        if (abortUpdate) {
+          resultsTextContent += `\n\nUpdate aborted by user at appointment ${idx + 1} of ${total}`;
+          resultsText.value = resultsTextContent;
+          status('Update aborted', 'error');
+          break;
+        }
+        
+        const appt = appointmentsToUpdate[idx];
+        const apptId = appt['Appt-id'] || 'Unknown';
+        
+        // Update progress
+        const progress = Math.round(((idx + 1) / total) * 100);
+        progressBar.style.width = `${progress}%`;
+        progressLabel.textContent = `Updating appointment ${idx + 1} of ${total}: ${apptId}`;
+        
+        // Calculate new date for this appointment (if date range mode)
+        let calculatedDate = newDate;
+        if (useDateRangeMode && fromDateValue) {
+          calculatedDate = calculateNewDateForAppointment(appt, fromDateValue, newDate);
+        }
+        
+        // Make API call for this single appointment
+        try {
+          const singleRes = await api('update_single', {
+            org: orgInput.value.trim(),
+            token,
+            appointment: appt,
+            new_date: calculatedDate
+          });
+          
+          completedCount++;
+          
+          if (singleRes.success) {
+            successCount++;
+            resultsTextContent += `${idx + 1}. ${apptId}: SUCCESS\n`;
+            resultsText.value = resultsTextContent;
+          } else {
+            failCount++;
+            resultsTextContent += `${idx + 1}. ${apptId}: FAILED - ${singleRes.message || singleRes.error || 'Unknown error'}\n`;
+            resultsText.value = resultsTextContent;
+          }
+          
+          // Update time label after each call
+          updateTimeLabel(total, false);
+          
+          // Scroll results textarea to bottom to show latest result
+          resultsText.scrollTop = resultsText.scrollHeight;
+          
+        } catch (error) {
+          completedCount++;
+          failCount++;
+          resultsTextContent += `${idx + 1}. ${apptId}: ERROR - ${error.message || 'Network error'}\n`;
+          resultsText.value = resultsTextContent;
+          updateTimeLabel(total, false);
+          resultsText.scrollTop = resultsText.scrollHeight;
+        }
+      }
+      
       // Hide stop button when finished
       if (stopBtn) stopBtn.style.display = 'none';
-
-      if (updateRes.success) {
-        const successCount = updateRes.success_count || 0;
-        const failCount = updateRes.fail_count || 0;
-        status(`Update completed: ${successCount} succeeded, ${failCount} failed`, 'success');
-        progressLabel.textContent = 'Done!';
-        progressBar.style.width = '100%';
+      
+      // Final summary
+      progressBar.style.width = '100%';
+      progressLabel.textContent = 'Done!';
+      updateTimeLabel(total, true);
+      
+      if (abortUpdate) {
+        status('Update aborted', 'error');
+      } else if (failCount === 0) {
+        status(`Update completed: All ${successCount} appointments succeeded`, 'success');
         
         // Track update success
         await trackEvent('update_appointments_completed', {
           org: orgInput.value.trim() || 'unknown',
-          appointments_count: String(appointmentsToUpdate.length),
+          appointments_count: String(total),
           success_count: String(successCount),
           fail_count: String(failCount),
           new_date: newDate
         });
-        
-        // Display the results in results textarea
-        let responseText = `Update completed.\n\n`;
-        responseText += `Summary: ${updateRes.summary || ''}\n\n`;
-        responseText += `=== RAW JSON RESPONSE ===\n`;
-        responseText += JSON.stringify(updateRes, null, 2);
-        if (updateRes.results && updateRes.results.length > 0) {
-          responseText += `\n\n=== INDIVIDUAL RESULTS ===\n`;
-          updateRes.results.forEach((result, idx) => {
-            responseText += `${idx + 1}. ${result.appt_id}: ${result.success ? 'SUCCESS' : 'FAILED'} - ${result.message}\n`;
-          });
-        }
-        resultsText.value = responseText;
-        updateTimeLabel(appointmentsToUpdate.length, true);
       } else {
-        status(`Update failed: ${updateRes.error || 'Unknown error'}`, 'error');
-        progressLabel.textContent = 'Failed';
-        progressBar.style.width = '100%';
+        status(`Update completed: ${successCount} succeeded, ${failCount} failed`, successCount > 0 ? 'success' : 'error');
         
-        // Track update failure
-        await trackEvent('update_appointments_failed', {
+        // Track update completion (with failures)
+        await trackEvent('update_appointments_completed', {
           org: orgInput.value.trim() || 'unknown',
-          appointments_count: String(appointmentsToUpdate.length),
-          new_date: newDate,
-          error: updateRes.error || 'Unknown error'
+          appointments_count: String(total),
+          success_count: String(successCount),
+          fail_count: String(failCount),
+          new_date: newDate
         });
-        
-        // Display the error in results textarea
-        let responseText = `Update failed.\nError: ${updateRes.error || 'Unknown error'}\n\n`;
-        responseText += `=== RAW JSON RESPONSE ===\n`;
-        responseText += JSON.stringify(updateRes, null, 2);
-        resultsText.value = responseText;
-        updateTimeLabel(appointmentsToUpdate.length, true);
       }
+      
+      // Add final summary to results
+      resultsTextContent += `\n\n=== SUMMARY ===\n`;
+      resultsTextContent += `Total: ${total}\n`;
+      resultsTextContent += `Success: ${successCount}\n`;
+      resultsTextContent += `Failed: ${failCount}\n`;
+      resultsText.value = resultsTextContent;
+      resultsText.scrollTop = resultsText.scrollHeight;
     };
 
     function updateTimeLabel(total, final = false) {

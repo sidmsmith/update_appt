@@ -874,6 +874,28 @@ def update():
         "total_count": total
     })
 
+@app.route('/api/update_single', methods=['POST'])
+def update_single():
+    """Update a single appointment - used for real-time progress display"""
+    request_data = request.json
+    org = request_data.get('org')
+    token = request_data.get('token')
+    appt = request_data.get('appointment')
+    new_date = request_data.get('new_date')
+    
+    if not all([org, token, appt, new_date]):
+        return jsonify({"success": False, "error": "Missing data"})
+    
+    headers = {"Authorization": f"Bearer {token}"}
+    result = update_appointment(appt, new_date, headers, org)
+    
+    appt_id = appt.get("Appt-id", "Unknown")
+    return jsonify({
+        "success": result["success"],
+        "appt_id": appt_id,
+        "message": result.get("message", "Success") if result["success"] else result.get("error", "Unknown error")
+    })
+
 @app.route('/api/ha-track', methods=['POST'])
 def ha_track():
     """Receive events from frontend and forward to HA webhook"""
