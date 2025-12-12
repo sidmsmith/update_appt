@@ -16,7 +16,7 @@ app = Flask(__name__)
 HA_WEBHOOK_URL = os.getenv("HA_WEBHOOK_URL", "http://sidmsmith.zapto.org:8123/api/webhook/manhattan_app_usage")
 HA_HEADERS = {"Content-Type": "application/json"}
 APP_NAME = "update-appt"
-APP_VERSION = "3.2.2"
+APP_VERSION = "3.2.3"
 
 AUTH_HOST = "salep-auth.sce.manh.com"
 API_HOST = "salep.sce.manh.com"

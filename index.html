@@ -1589,47 +1589,118 @@
       startTime = Date.now();
       completedCount = 0;
 
-      // Use bulk import API to send all appointments in one shot
-      progressLabel.textContent = 'Preparing bulk import...';
+      // Bulk imports are not displayed in the calendar so using single API until its fixed by R&D
+      // TODO: Re-enable bulk import when R&D fixes the bulk API
+      // 
+      // // Use bulk import API to send all appointments in one shot
+      // progressLabel.textContent = 'Preparing bulk import...';
+      // progressBar.style.width = '10%';
+      // 
+      // // Build new_dates_dict mapping appointment IDs to their calculated dates
+      // const new_dates_dict = {};
+      // for (const appt of appointmentsToUpdate) {
+      //   const apptId = appt['Appt-id'] || 'Unknown';
+      //   let calculatedDate = newDate;
+      //   if (useDateRangeMode && fromDateValue) {
+      //     calculatedDate = calculateNewDateForAppointment(appt, fromDateValue, newDate);
+      //   }
+      //   new_dates_dict[apptId] = calculatedDate;
+      // }
+      // // Also include default date for any appointments that might not have a specific date
+      // new_dates_dict['default'] = newDate;
+      // 
+      // progressLabel.textContent = `Sending ${appointmentsToUpdate.length} appointments via bulk import...`;
+      // progressBar.style.width = '50%';
+      // 
+      // const bulkRes = await api('bulk_import', {
+      //   org: orgInput.value.trim(),
+      //   token,
+      //   appointments: appointmentsToUpdate,
+      //   new_dates_dict: new_dates_dict
+      // });
+      // 
+      // // Log the raw JSON response to console
+      // console.log('=== BULK IMPORT API RAW RESPONSE ===');
+      // console.log(bulkRes);
+      // if (bulkRes.response) {
+      //   console.log('\n=== BULK IMPORT API RESPONSE (formatted) ===');
+      //   console.log(JSON.stringify(bulkRes.response, null, 2));
+      // }
+      // console.log('====================================');
+      // 
+      // // Hide stop button when finished
+      // if (stopBtn) stopBtn.style.display = 'none';
+      // 
+      // if (bulkRes.success) {
+      //   status(`Bulk import completed for ${appointmentsToUpdate.length} appointments`, 'success');
+      //   progressLabel.textContent = 'Done!';
+      //   progressBar.style.width = '100%';
+      //   
+      //   // Track update success
+      //   await trackEvent('update_appointments_completed', {
+      //     org: orgInput.value.trim() || 'unknown',
+      //     appointments_count: String(appointmentsToUpdate.length),
+      //     new_date: newDate
+      //   });
+      //   
+      //   // Display the raw JSON response in results textarea
+      //   let responseText = `Bulk import completed successfully.\n\n`;
+      //   responseText += `=== RAW JSON RESPONSE ===\n`;
+      //   responseText += JSON.stringify(bulkRes, null, 2);
+      //   if (bulkRes.response) {
+      //     responseText += `\n\n=== API RESPONSE (formatted) ===\n`;
+      //     responseText += JSON.stringify(bulkRes.response, null, 2);
+      //   }
+      //   resultsText.value = responseText;
+      //   updateTimeLabel(appointmentsToUpdate.length, true);
+      // } else {
+      //   status(`Bulk import failed: ${bulkRes.error || 'Unknown error'}`, 'error');
+      //   progressLabel.textContent = 'Failed';
+      //   progressBar.style.width = '100%';
+      //   
+      //   // Track update failure
+      //   await trackEvent('update_appointments_failed', {
+      //     org: orgInput.value.trim() || 'unknown',
+      //     appointments_count: String(appointmentsToUpdate.length),
+      //     new_date: newDate,
+      //     error: bulkRes.error || 'Unknown error'
+      //   });
+      //   
+      //   // Display the raw JSON response in results textarea
+      //   let responseText = `Bulk import failed.\nError: ${bulkRes.error || 'Unknown error'}\n\n`;
+      //   responseText += `=== RAW JSON RESPONSE ===\n`;
+      //   responseText += JSON.stringify(bulkRes, null, 2);
+      //   if (bulkRes.response) {
+      //     responseText += `\n\n=== API RESPONSE (formatted) ===\n`;
+      //     responseText += JSON.stringify(bulkRes.response, null, 2);
+      //   }
+      //   resultsText.value = responseText;
+      //   updateTimeLabel(appointmentsToUpdate.length, true);
+      // }
+
+      // Using single API calls (one per appointment) - appointments are displayed in calendar
+      progressLabel.textContent = `Updating ${appointmentsToUpdate.length} appointments (one at a time)...`;
       progressBar.style.width = '10%';
 
-      // Build new_dates_dict mapping appointment IDs to their calculated dates
-      const new_dates_dict = {};
-      for (const appt of appointmentsToUpdate) {
-        const apptId = appt['Appt-id'] || 'Unknown';
-        let calculatedDate = newDate;
-        if (useDateRangeMode && fromDateValue) {
-          calculatedDate = calculateNewDateForAppointment(appt, fromDateValue, newDate);
-        }
-        new_dates_dict[apptId] = calculatedDate;
-      }
-      // Also include default date for any appointments that might not have a specific date
-      new_dates_dict['default'] = newDate;
-
-      progressLabel.textContent = `Sending ${appointmentsToUpdate.length} appointments via bulk import...`;
-      progressBar.style.width = '50%';
-
-      const bulkRes = await api('bulk_import', {
+      const updateRes = await api('update', {
         org: orgInput.value.trim(),
         token,
         appointments: appointmentsToUpdate,
-        new_dates_dict: new_dates_dict
+        new_date: newDate
       });
 
       // Log the raw JSON response to console
-      console.log('=== BULK IMPORT API RAW RESPONSE ===');
-      console.log(bulkRes);
-      if (bulkRes.response) {
-        console.log('\n=== BULK IMPORT API RESPONSE (formatted) ===');
-        console.log(JSON.stringify(bulkRes.response, null, 2));
-      }
+      console.log('=== UPDATE API RAW RESPONSE ===');
+      console.log(updateRes);
       console.log('====================================');
 
       // Hide stop button when finished
       if (stopBtn) stopBtn.style.display = 'none';
 
-      if (bulkRes.success) {
-        status(`Bulk import completed for ${appointmentsToUpdate.length} appointments`, 'success');
+      if (updateRes.success) {
+        const successCount = updateRes.success_count || 0;
+        const failCount = updateRes.fail_count || 0;
+        status(`Update completed: ${successCount} succeeded, ${failCount} failed`, 'success');
         progressLabel.textContent = 'Done!';
         progressBar.style.width = '100%';
         
@@ -1637,21 +1708,26 @@
         await trackEvent('update_appointments_completed', {
           org: orgInput.value.trim() || 'unknown',
           appointments_count: String(appointmentsToUpdate.length),
+          success_count: String(successCount),
+          fail_count: String(failCount),
           new_date: newDate
         });
         
-        // Display the raw JSON response in results textarea
-        let responseText = `Bulk import completed successfully.\n\n`;
+        // Display the results in results textarea
+        let responseText = `Update completed.\n\n`;
+        responseText += `Summary: ${updateRes.summary || ''}\n\n`;
         responseText += `=== RAW JSON RESPONSE ===\n`;
-        responseText += JSON.stringify(bulkRes, null, 2);
-        if (bulkRes.response) {
-          responseText += `\n\n=== API RESPONSE (formatted) ===\n`;
-          responseText += JSON.stringify(bulkRes.response, null, 2);
+        responseText += JSON.stringify(updateRes, null, 2);
+        if (updateRes.results && updateRes.results.length > 0) {
+          responseText += `\n\n=== INDIVIDUAL RESULTS ===\n`;
+          updateRes.results.forEach((result, idx) => {
+            responseText += `${idx + 1}. ${result.appt_id}: ${result.success ? 'SUCCESS' : 'FAILED'} - ${result.message}\n`;
+          });
         }
         resultsText.value = responseText;
         updateTimeLabel(appointmentsToUpdate.length, true);
       } else {
-        status(`Bulk import failed: ${bulkRes.error || 'Unknown error'}`, 'error');
+        status(`Update failed: ${updateRes.error || 'Unknown error'}`, 'error');
         progressLabel.textContent = 'Failed';
         progressBar.style.width = '100%';
         
@@ -1660,17 +1736,13 @@
           org: orgInput.value.trim() || 'unknown',
           appointments_count: String(appointmentsToUpdate.length),
           new_date: newDate,
-          error: bulkRes.error || 'Unknown error'
+          error: updateRes.error || 'Unknown error'
         });
         
-        // Display the raw JSON response in results textarea
-        let responseText = `Bulk import failed.\nError: ${bulkRes.error || 'Unknown error'}\n\n`;
+        // Display the error in results textarea
+        let responseText = `Update failed.\nError: ${updateRes.error || 'Unknown error'}\n\n`;
         responseText += `=== RAW JSON RESPONSE ===\n`;
-        responseText += JSON.stringify(bulkRes, null, 2);
-        if (bulkRes.response) {
-          responseText += `\n\n=== API RESPONSE (formatted) ===\n`;
-          responseText += JSON.stringify(bulkRes.response, null, 2);
-        }
+        responseText += JSON.stringify(updateRes, null, 2);
         resultsText.value = responseText;
         updateTimeLabel(appointmentsToUpdate.length, true);
       }
