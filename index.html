@@ -499,9 +499,16 @@
       datePicker.valueAsDate = tomorrow;
     }
     
-    // Ensure ORG is always blank on load (security)
+    // Support cross-app deep links: ORG can be passed as ORG or Organization
+    const startupUrlParams = new URLSearchParams(window.location.search);
+    const startupOrgFromUrl = (
+      startupUrlParams.get('ORG') ||
+      startupUrlParams.get('Organization') ||
+      ''
+    ).trim();
+
     if (orgInput) {
-      orgInput.value = '';
+      orgInput.value = startupOrgFromUrl;
     }
 
     // ===== LOCALSTORAGE PERSISTENCE =====
@@ -766,10 +773,14 @@
     // Initialize page load time
     window._pageLoadTime = Date.now();
 
-    // App opened + Focus ORG
+    // App opened + optional URL-based auto-authentication
     window.addEventListener('load', async () => {
       await trackEvent('app_opened', {});
-      orgInput.focus();
+      if (startupOrgFromUrl) {
+        await authenticate();
+      } else {
+        orgInput.focus();
+      }
     });
 
     // Note: useCsv event handler moved below for mutual exclusivity
