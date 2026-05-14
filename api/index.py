@@ -3,7 +3,7 @@ from flask import Flask, request, jsonify, send_from_directory
 import json
 import re
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import requests
 from requests.auth import HTTPBasicAuth
 import urllib3
@@ -13,10 +13,10 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 app = Flask(__name__)
 
 # === SECURE CONFIG (from Vercel Environment Variables) ===
-HA_WEBHOOK_URL = os.getenv("HA_WEBHOOK_URL", "http://sidmsmith.zapto.org:8123/api/webhook/manhattan_app_usage")
-HA_HEADERS = {"Content-Type": "application/json"}
+USAGE_INGEST_URL = os.getenv("MANHATTAN_USAGE_INGEST_URL", "").strip()
+USAGE_INGEST_SECRET = os.getenv("MANHATTAN_USAGE_INGEST_SECRET", "").strip()
 APP_NAME = "update-appt"
-APP_VERSION = "3.2.3"
+APP_VERSION = "3.2.4"
 
 AUTH_HOST = "salep-auth.sce.manh.com"
 API_HOST = "salep.sce.manh.com"
@@ -38,19 +38,30 @@ if not PASSWORD or not CLIENT_SECRET:
     raise Exception("Missing MANHATTAN_PASSWORD or MANHATTAN_SECRET environment variables")
 
 # === HELPERS ===
-def send_ha_message(event_name, metadata={}):
-    """Send event to Home Assistant webhook"""
+def forward_usage_event(payload):
+    """POST usage JSON to Manhattan app usage dashboard ingest (Neon)."""
+    if not USAGE_INGEST_URL:
+        print("[usage] MANHATTAN_USAGE_INGEST_URL not set; event not recorded")
+        return
+    headers = {"Content-Type": "application/json"}
+    if USAGE_INGEST_SECRET:
+        headers["Authorization"] = f"Bearer {USAGE_INGEST_SECRET}"
+    try:
+        requests.post(USAGE_INGEST_URL, json=payload, headers=headers, timeout=8)
+    except Exception as e:
+        print(f"[usage] Forward failed: {e}")
+
+
+def emit_usage(event_name, **fields):
+    """Single usage row: event_name + app identity + optional fields."""
     payload = {
         "event_name": event_name,
         "app_name": APP_NAME,
         "app_version": APP_VERSION,
-        "timestamp": datetime.utcnow().isoformat(),
-        **metadata
+        **fields,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
-    try:
-        requests.post(HA_WEBHOOK_URL, json=payload, headers=HA_HEADERS, timeout=5)
-    except:
-        pass
+    forward_usage_event(payload)
 
 def get_manhattan_token(org):
     url = f"https://{AUTH_HOST}/oauth/token"
@@ -402,7 +413,8 @@ def update_appointment(appt, new_date, base_headers, org):
 # === API ROUTES ===
 @app.route('/api/app_opened', methods=['POST'])
 def app_opened():
-    send_ha_message({"event": "manhattan_appt_update_open", "org": request.json.get("org", "")})
+    org = (request.json or {}).get("org") or None
+    emit_usage("app_opened", org=org)
     return jsonify({"success": True})
 
 @app.route('/api/auth', methods=['POST'])
@@ -412,9 +424,9 @@ def auth():
         return jsonify({"success": False, "error": "ORG required"})
     token = get_manhattan_token(org)
     if token:
-        send_ha_message({"event": "manhattan_appt_update_auth", "org": org, "success": True})
+        emit_usage("auth_success", org=org, token_received=True)
         return jsonify({"success": True, "token": token})
-    send_ha_message({"event": "manhattan_appt_update_auth", "org": org, "success": False})
+    emit_usage("auth_failed", org=org, token_received=False, error="Auth failed")
     return jsonify({"success": False, "error": "Auth failed"})
 
 @app.route('/api/get_default_appointments', methods=['POST'])
@@ -858,12 +870,13 @@ def update():
     print(f"  Failed: {fail_count}")
     print("=" * 80)
     
-    send_ha_message({
-        "event": "manhattan_appt_update",
-        "org": org,
-        "success_count": success_count,
-        "total_count": total,
-    })
+    emit_usage(
+        "update_appointments_batch_completed",
+        org=org,
+        success_count=success_count,
+        total_count=total,
+        fail_count=fail_count,
+    )
     
     return jsonify({
         "success": True,
@@ -896,13 +909,22 @@ def update_single():
         "message": result.get("message", "Success") if result["success"] else result.get("error", "Unknown error")
     })
 
-@app.route('/api/ha-track', methods=['POST'])
-def ha_track():
-    """Receive events from frontend and forward to HA webhook"""
-    data = request.json
+@app.route('/api/usage-track', methods=['POST'])
+def usage_track():
+    """Receive events from frontend and forward to usage ingest."""
+    data = request.json or {}
     event_name = data.get('event_name')
     metadata = data.get('metadata', {})
-    send_ha_message(event_name, metadata)
+    if not event_name:
+        return jsonify({"success": True})
+    payload = {
+        "event_name": event_name,
+        "app_name": APP_NAME,
+        "app_version": APP_VERSION,
+        **metadata,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    forward_usage_event(payload)
     return jsonify({"success": True})
 
 # === FALLBACK: Serve index.html for SPA (Critical for Vercel) ===
